@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solar Studio</title>
+<style>
+:root{color-scheme:dark;--bg:#0c121e;--pn:#141c2d;--pn2:#1a2438;--ln:#27344d;--tx:#e8edf7;--mu:#8e9bb5;--ac:#f2a900;--ac2:#3ecf8e;--rd:#e5484d;--r:10px;--f:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif}
+*{box-sizing:border-box}html{scroll-padding-top:60px}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 var(--f);font-variant-numeric:tabular-nums}
+a{color:inherit}button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+nav{position:sticky;top:0;z-index:5;display:flex;gap:2px;align-items:center;padding:8px 16px;background:#0c121eee;border-bottom:1px solid var(--ln);overflow-x:auto}
+nav b{margin-right:14px;font-size:17px;white-space:nowrap}nav b i{color:var(--ac);font-style:normal}
+nav a{padding:7px 12px;border-radius:8px;text-decoration:none;color:var(--mu);white-space:nowrap;font-size:14px}
+nav a:hover{color:var(--tx)}nav a.on{background:var(--pn2);color:var(--ac)}
+main{max-width:1180px;margin:0 auto;padding:22px 16px 60px}
+section{display:none}section.on{display:block}
+h1{font-size:28px;margin:0 0 4px;letter-spacing:-.01em}h2{font-size:17px;margin:0 0 10px}
+.sub{color:var(--mu);margin:0 0 20px;max-width:62ch}
+.box{background:var(--pn);border:1px solid var(--ln);border-radius:var(--r);padding:16px}
+.g{display:grid;gap:12px}.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}.g6{grid-template-columns:repeat(6,1fr)}
+.g5{grid-template-columns:repeat(5,1fr)}
+.roofg{grid-template-columns:minmax(0,1fr) 320px}
+#rmap{height:420px;border-radius:var(--r);border:1px solid var(--ln);background:#101828;color:var(--mu);padding:20px}
+.main2{grid-template-columns:minmax(0,1fr) 270px}
+@media(max-width:860px){.g2,.g3,.main2,.roofg{grid-template-columns:1fr}.g6,.g5{grid-template-columns:repeat(2,1fr)}}
+.stat{background:var(--pn);border:1px solid var(--ln);border-radius:var(--r);padding:12px 14px}
+.stat small{color:var(--mu);display:block}.stat b{font-size:24px}.stat span{color:var(--mu);font-size:13px}
+.btn{background:var(--pn2);border:1px solid var(--ln);border-radius:8px;padding:7px 12px;cursor:pointer}
+.btn:hover{border-color:var(--ac)}.btn.pri{background:var(--ac);color:#1a1200;border-color:var(--ac);font-weight:600}
+.btn.on{border-color:var(--ac);color:var(--ac)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.stage{height:430px;background:radial-gradient(ellipse at 50% 110%,#1d2b47,#0a0f1a 70%);border:1px solid var(--ln);border-radius:var(--r);overflow:hidden}
+.stage svg{width:100%;height:100%}
+.lib button{display:flex;justify-content:space-between;width:100%;margin-bottom:6px;text-align:left}
+.lib small{color:var(--ac)}
+label{display:block;color:var(--mu);font-size:13px;margin-bottom:3px}
+input,select{background:var(--bg);border:1px solid var(--ln);border-radius:8px;padding:7px 9px;width:100%}
+table{width:100%;border-collapse:collapse}th,td{padding:7px 8px;border-bottom:1px solid var(--ln);text-align:left}th{color:var(--mu);font-weight:500}
+td.n,th.n{text-align:right}
+.tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.map{height:300px;border-radius:var(--r);border:1px dashed var(--ln);display:grid;place-items:center;color:var(--mu);text-align:center;padding:20px;background:repeating-linear-gradient(45deg,#101828,#101828 12px,#121b2d 12px,#121b2d 24px)}
+.todo{color:var(--mu);font-size:13px;border-left:3px solid var(--ac);padding-left:10px;margin-top:12px}
+.hero{padding:28px;background:linear-gradient(120deg,#1b2540,#141c2d 60%);border:1px solid var(--ln);border-radius:14px;margin-bottom:14px}
+.hero h1{font-size:34px;max-width:18ch}
+.card{cursor:pointer;text-align:left}.card:hover{border-color:var(--ac)}
+.ok{color:var(--ac2)}.bad{color:var(--rd)}
+.fl{stroke-dasharray:10 8;animation:fl .9s linear infinite}@keyframes fl{to{stroke-dashoffset:-18}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<nav id="nav"><b>Solar<i>Studio</i></b></nav>
+<main>
+
+<section id="home">
+ <div class="hero"><h1>Design a solar system from the load up.</h1>
+ <p class="sub">Start with what your home uses, map the roof, size the equipment, wire it, and price the materials.</p>
+ <div class="row"><button class="btn pri" data-go="load">Start with your loads</button><button class="btn" data-go="tool">Open the solar tool</button></div></div>
+ <div class="g g3" id="homeCards"></div>
+</section>
+
+<section id="tool">
+ <h1>Solar tool</h1><p class="sub">Sizing summary, wiring diagram, and materials list for the current design.</p>
+ <div class="box" style="margin-bottom:12px"><div class="g g5">
+  <div><label>Setup</label><select id="topo"><option value="hybrid-no-export">Hybrid, no export</option><option value="hybrid-export">Hybrid, export</option><option value="grid-tied">Grid-tied</option><option value="off-grid">Off-grid</option></select></div>
+  <div><label>Monthly use (kWh)</label><input type="number" id="mkwh" value="400" min="1"></div>
+  <div><label>Latitude</label><input type="number" id="lat" value="14.5995" step="any"></div>
+  <div><label>Longitude</label><input type="number" id="lon" value="120.9842" step="any"></div>
+  <div style="align-self:end"><button class="btn pri" id="runBtn" style="width:100%">Run simulation</button></div></div>
+  <p id="simMsg" style="margin:8px 0 0;color:var(--mu)">Sizing below is an estimate until you run the simulation.</p></div>
+ <div class="g g6" id="sum"></div>
+ <div class="g main2" style="margin-top:12px">
+  <div>
+   <div class="row" id="edBar" style="margin-bottom:8px"><button class="btn on" data-mode="move">Move</button><button class="btn" data-mode="p">+ Wire</button><button class="btn" data-mode="n">− Wire</button><button class="btn" data-mode="pair">+/− Pair</button><button class="btn" data-mode="g">Ground</button><button class="btn" data-mode="cut">Cut wire</button><span style="flex:1"></span><button class="btn" id="edUndo">Undo (0)</button><button class="btn" id="edClear">Clear wires</button></div>
+   <div class="stage" id="stage"></div>
+   <p class="todo" id="edInfo">Loading the 3D view…</p>
+  </div>
+  <div class="box lib" id="lib"><h2>Hardware library</h2>
+   <div class="tabs"><button class="btn on">Breakers</button><button class="btn">Switches</button><button class="btn">Power</button></div>
+   <button class="btn" data-add="pvb">PV DC breaker<small>₱1,800</small></button><button class="btn" data-add="acb">AC breaker<small>₱900</small></button>
+   <button class="btn" data-add="bmc">Battery DC MCCB<small>₱4,500</small></button><button class="btn" data-add="spdd">DC surge protector<small>₱1,300</small></button>
+   <button class="btn" data-add="spda">AC surge protector<small>₱1,100</small></button></div>
+ </div>
+ <div class="g g2" style="margin-top:12px">
+  <div class="box"><h2>Step 1: Equipment</h2>
+   <div class="g g2"><div><label>Inverter</label><select><option>Hybrid 6 kW, 48 V</option><option>Grid-tied 5 kW</option></select></div>
+   <div><label>PV module</label><select><option>500 W mono</option><option>450 W mono</option></select></div>
+   <div><label>Battery module</label><select><option>51.2 V 200 Ah LiFePO4</option><option>None</option></select></div>
+   <div><label>Panels</label><input type="number" id="panelQty" value="15" min="1"></div></div>
+   <details style="margin-top:12px"><summary style="cursor:pointer;color:var(--ac)">Module and site settings</summary><div class="g g3" style="margin-top:10px"><div><label>Module Isc (A)</label><input type="number" id="iSc" value="13.8" step="any"></div><div><label>Module Vmp (V)</label><input type="number" id="vmp" value="41.5" step="any"></div><div><label>Module Voc (V)</label><input type="number" id="voc" value="49.5" step="any"></div><div><label>Inverter max DC (V)</label><input type="number" id="maxDcV" value="500" step="any"></div><div><label>MPPT minimum (V)</label><input type="number" id="mpptMin" value="120" step="any"></div><div><label>MPPT inputs</label><input type="number" id="mppts" value="2" step="any"></div><div><label>Max current per MPPT (A)</label><input type="number" id="maxPvA" value="25" step="any"></div><div><label>Array to inverter (m)</label><input type="number" id="pvD" value="25" step="any"></div><div><label>Battery to inverter (m)</label><input type="number" id="batD" value="3" step="any"></div><div><label>Inverter to panel (m)</label><input type="number" id="acD" value="8" step="any"></div><div><label>Voltage drop (%)</label><input type="number" id="drop" value="2" step="any"></div><div><label>Lowest temperature (°C)</label><input type="number" id="lowT" value="15" step="any"></div><div><label>Roof temperature (°C)</label><input type="number" id="roofT" value="45" step="any"></div><div><label>Indoor temperature (°C)</label><input type="number" id="inT" value="35" step="any"></div><div><label>Building</label><select id="bldg"><option value="dwelling">Dwelling (600 V)</option><option value="other">Other (1000 V)</option></select></div></div></details></div>
+  <div class="box"><h2>Step 2: Calculations</h2>
+   <div class="tabs" id="wbTabs"></div><div id="wb"></div></div>
+ </div>
+ <div class="box" style="margin-top:12px"><div class="row"><h2 style="margin:0;flex:1">Bill of materials</h2><button class="btn" id="bomBtn">Refresh</button></div><div id="bom"></div>
+  <p class="todo">Materials only. Labor, engineering and permitting fees are excluded. Port the itemized BOM from your current <code>index.html</code> here and make unit prices editable.</p></div>
+</section>
+
+<section id="load">
+ <h1>Load calculator</h1><p class="sub">Add the appliances you run. The totals size the inverter, panels and battery.</p>
+ <div class="g g2" style="grid-template-columns:1.4fr 1fr">
+  <div>
+   <div class="box"><h2>Quick add</h2><div class="row" id="presets"></div></div>
+   <div class="box" style="margin-top:12px"><h2>Your appliances</h2><div id="loads"></div></div>
+  </div>
+  <div class="box"><h2>Recommended system</h2><div id="rec"></div>
+   <div class="row" style="margin-top:12px"><button class="btn pri" id="xfer">Use this in the solar tool</button></div></div>
+ </div>
+</section>
+
+<section id="roof">
+ <h1>Roof mapper</h1><p class="sub">Find the site, outline the roof on the satellite view, and see how many panels fit and where the sun will be.</p>
+ <div class="row" style="margin-bottom:8px"><input id="rq" placeholder="Search city, barangay or address" style="flex:1;min-width:200px"><button class="btn" id="rgo">Find</button></div>
+ <div class="row" style="margin-bottom:10px"><button class="btn" data-reg="14.5995,120.9842">Manila</button><button class="btn" data-reg="13.7565,121.0583">Batangas</button><button class="btn" data-reg="10.3157,123.8854">Cebu</button><button class="btn" data-reg="7.1907,125.4553">Davao</button><button class="btn" data-reg="10.7202,122.5621">Iloilo</button><button class="btn" data-reg="16.4023,120.596">Baguio</button></div>
+ <div class="g roofg">
+  <div><div class="row" style="margin-bottom:8px"><button class="btn" id="rDraw">Draw roof</button><button class="btn" id="rFin">Finish outline</button><button class="btn" id="rClr">Clear</button><button class="btn" id="rDel">Remove face</button><span id="rMsg" style="color:var(--mu)"></span></div>
+   <div id="rmap">Loading the map…</div></div>
+  <div class="box"><h2>Roof faces</h2><div class="row" id="faces" style="margin-bottom:10px"></div><div id="rstats"></div><p id="rfit" style="margin:8px 0 0"></p>
+   <div class="g g2" style="margin-top:12px">
+    <div><label>Panel length (m)</label><input type="number" id="rL" value="2.278" step="0.001"></div>
+    <div><label>Panel width (m)</label><input type="number" id="rW" value="1.134" step="0.001"></div>
+    <div><label>Layout</label><select id="rOri"><option value="auto">Best fit</option><option value="landscape">Landscape</option><option value="portrait">Portrait</option></select></div>
+    <div><label>Edge setback (m)</label><input type="number" id="rSb" value="0.5" step="0.1" min="0"></div>
+    <div><label>Roof tilt (°)</label><input type="number" id="rTilt" value="15" min="0" max="90"></div>
+    <div><label>Direction (°, 180 = south)</label><input type="number" id="rAz" value="180" min="0" max="360"></div></div>
+   <div class="row" style="margin-top:12px"><button class="btn pri" id="rSend">Use in solar tool</button></div><p id="rNote" style="color:var(--mu);margin:8px 0 0;font-size:13px"></p></div>
+ </div>
+ <div class="box" style="margin-top:12px"><h2>Sun path</h2>
+  <div class="row" style="margin-bottom:8px"><select id="sunD" style="width:auto"><option value="80">Mar 21</option><option value="172">Jun 21</option><option value="265">Sep 22</option><option value="355">Dec 21</option></select><input type="range" id="sun" min="5" max="19" step="0.5" value="12" style="max-width:320px"><b id="sunH">12:00</b></div>
+  <div class="row" style="align-items:flex-start"><svg id="sunSvg" viewBox="0 0 320 320" style="width:100%;max-width:320px"></svg><p id="sunInfo" style="flex:1;min-width:220px"></p></div></div>
+ <div class="box" style="margin-top:12px"><h2>12-month solar profile</h2><p id="irrNote" style="margin:0 0 8px;color:var(--mu)"></p>
+  <svg id="irr" viewBox="0 0 720 260" style="width:100%"></svg><p id="irrSum" style="margin:8px 0"></p>
+  <div class="row"><button class="btn" id="irrRun">Update for this site</button><span id="irrMsg" style="color:var(--mu)"></span></div></div>
+</section>
+
+<section id="roi">
+ <h1>ROI simulator</h1><p class="sub">Savings and payback from the simulation. Change the assumptions and recalculate.</p>
+ <div class="g g2"><div class="box"><div class="g g2">
+  <div><label>Electricity rate (₱ per kWh)</label><input type="number" id="tariff" placeholder="Utility default" step="0.1"></div>
+  <div><label>Yearly rate increase (%)</label><input type="number" id="esc" value="3" step="0.5"></div>
+  <div><label>Panel degradation (% per year)</label><input type="number" id="deg" value="0.5" step="0.1"></div>
+  <div style="align-self:end"><button class="btn pri" id="recalc" style="width:100%">Recalculate</button></div></div></div>
+ <div class="box" id="roiOut"></div></div>
+ <div class="box" style="margin-top:12px"><h2>Cumulative cash position (25 years)</h2><svg id="cf" viewBox="0 0 720 220" style="width:100%"></svg></div>
+</section>
+
+<section id="yield">
+ <h1>Yield monitor</h1><p class="sub" id="ynote"></p>
+ <div class="row" style="margin-bottom:10px"><label style="margin:0">Month</label><select id="ymon" style="width:auto"><option value="0">Jan</option><option value="1">Feb</option><option value="2">Mar</option><option value="3">Apr</option><option value="4">May</option><option value="5">Jun</option><option value="6">Jul</option><option value="7">Aug</option><option value="8">Sep</option><option value="9">Oct</option><option value="10">Nov</option><option value="11">Dec</option></select>
+  <label style="margin:0 0 0 8px">Time</label><input type="range" id="yh" min="0" max="23" value="12" style="max-width:260px"><b id="yhT">12:00</b><button class="btn" id="yPlay">Play day</button></div>
+ <div class="box"><p id="yStatus" style="margin:0 0 8px"></p><svg id="flow" viewBox="0 0 720 360" style="width:100%"></svg></div>
+ <div class="g g2" style="margin-top:12px">
+  <div class="box"><h2>Solar and home demand</h2><svg id="curve" viewBox="0 0 720 240" style="width:100%;cursor:pointer"></svg>
+   <div class="row"><span style="color:var(--ac)">■ Solar</span><span style="color:var(--ac2)">■ Load</span><span style="color:var(--mu)">■ Grid</span></div><p class="sub" style="margin:6px 0 0;font-size:13px">Click the chart to pick a time. Values are kWh per hour.</p></div>
+  <div class="box"><h2>Battery level</h2><svg id="socCurve" viewBox="0 0 720 240" style="width:100%;cursor:pointer"></svg></div>
+ </div>
+</section>
+
+<section id="projects">
+ <h1>My projects</h1><p class="sub">Save the current design and reopen it later.</p>
+ <div class="row" style="margin-bottom:12px"><input id="pname" placeholder="Project name" style="max-width:280px"><button class="btn pri" id="save">Save current design</button></div>
+ <div class="g g3" id="plist"></div>
+</section>
+
+<section id="contact">
+ <h1>Contact</h1><p class="sub">Questions about a design or a quote? Send a note.</p>
+ <div class="box" style="max-width:480px"><label>Email</label><input type="email"><br><br><label>Message</label><input><br><br><button class="btn pri">Send message</button></div>
+</section>
+
+</main>
+<script>
+const $=id=>document.getElementById(id),php=n=>"₱"+Math.round(n).toLocaleString("en-US");
+const TABS=[["home","Home"],["tool","Solar tool"],["load","Load calculator"],["roof","Roof mapper"],["roi","ROI simulator"],["yield","Yield monitor"],["projects","Projects"],["contact","Contact"]];
+const S={loads:[],kwp:7.5,inv:6,bat:9.6,panels:15,watts:500,cost:260000};
+const PRE=[["Inverter AC 1 HP",750,8,1],["Refrigerator",150,24,1],["Ceiling fan",65,10,2],["LED lights",60,6,1],["Laptop and monitor",120,8,1],["Wi-Fi router",12,24,1],["TV 55 in",100,5,1],["Water pump",750,1,1]];
+// nav + routing
+$("nav").insertAdjacentHTML("beforeend",TABS.map(t=>`<a href="#${t[0]}" data-t="${t[0]}">${t[1]}</a>`).join(""));
+function route(){const h=(location.hash||"#home").slice(1),id=TABS.some(t=>t[0]===h)?h:"home";
+ document.querySelectorAll("section").forEach(s=>s.classList.toggle("on",s.id===id));
+ document.querySelectorAll("nav a").forEach(a=>a.classList.toggle("on",a.dataset.t===id));render();if(id!=="yield")stopPlay();if(id==="tool")initEditor();if(id==="roof")initMap();scrollTo(0,0)}
+addEventListener("hashchange",route);
+document.addEventListener("click",e=>{const g=e.target.closest("[data-go]");if(g)location.hash=g.dataset.go});
+$("homeCards").innerHTML=[["load","Load calculator","List your appliances and get a recommended system size."],["roof","Roof mapper","Outline your roof and see how many panels fit."],["tool","Solar tool","Wire the system and get a materials list."]].map(c=>`<button class="box card" data-go="${c[0]}"><h2>${c[1]}</h2><span style="color:var(--mu)">${c[2]}</span></button>`).join("");
+// load calculator
+$("presets").innerHTML=PRE.map((p,i)=>`<button class="btn" data-p="${i}">+ ${p[0]}</button>`).join("");
+$("presets").onclick=e=>{const i=e.target.dataset.p;if(i!=null){const p=PRE[i];S.loads.push({n:p[0],w:p[1],h:p[2],q:p[3]});calc();render()}};
+$("loads").onclick=e=>{const d=e.target.dataset.d;if(d!=null){S.loads.splice(+d,1);calc();render()}};
+$("loads").oninput=e=>{const [i,k]=e.target.dataset.f.split(".");S.loads[i][k]=Math.max(0,+e.target.value||0);calc();$("rec").innerHTML=recHTML()};
+let R={kwh:0,peak:0};
+function calc(){R.kwh=S.loads.reduce((a,l)=>a+l.w*l.h*l.q,0)/1000;R.peak=S.loads.reduce((a,l)=>a+l.w*l.q,0)/1000;
+ R.inv=Math.max(1,Math.ceil(R.peak*1.25));R.pv=R.kwh/(4.3*.75);R.bat=R.kwh*.4/.8}
+function recHTML(){return S.loads.length?`<table><tr><td>Daily use</td><td class="n"><b>${R.kwh.toFixed(2)} kWh</b></td></tr><tr><td>Peak load</td><td class="n">${R.peak.toFixed(2)} kW</td></tr><tr><td>Inverter</td><td class="n"><b>${R.inv} kW</b></td></tr><tr><td>Solar array</td><td class="n"><b>${R.pv.toFixed(2)} kWp</b></td></tr><tr><td>Battery</td><td class="n"><b>${R.bat.toFixed(1)} kWh</b></td></tr></table>`:`<p style="color:var(--mu)">Add an appliance to see the recommended system.</p>`}
+$("xfer").onclick=()=>{if(!S.loads.length)return;$("mkwh").value=Math.max(1,Math.round(R.kwh*30));location.hash="tool";runSim()};
+$("panelQty").oninput=e=>{S.panels=Math.max(1,+e.target.value||1);S.kwp=S.panels*S.watts/1000;S.manual=true;$("simMsg").textContent="Panel count changed. Run the simulation to update cost and savings.";render()};
+// tool
+const WB=["Electrical","PV sizing","Mounting","Warnings"];let wbi=0;
+$("wbTabs").innerHTML=WB.map((t,i)=>`<button class="btn" data-w="${i}">${t}</button>`).join("");
+$("wbTabs").onclick=e=>{if(e.target.dataset.w!=null){wbi=+e.target.dataset.w;render()}};
+const UD={panel_per_watt:7.5,inverter_per_kw:8500,bat_kwh:8500,rail_4_2m:650,roof_hook:120,clamp:45,pv_cable_per_m:45,ac_cable_per_m:85,bat_cable_per_m:350,prot_pv_dc_breaker:1800,prot_ac_breaker:900,prot_spd_dc:1300,prot_spd_ac:1100,prot_battery_mccb:4500,prot_enclosure_misc:1400,conduit_fittings:2200,grounding_kit:1500,lugs_glands_ties:1000};
+function bomRows(){const U=S.U||UD,p=S.panels,w=S.watts,rows=Math.ceil(p/12),rails=Math.ceil(p*2.26/4.2),hooks=Math.ceil(p*1.5),R={pv:E.pvD,ac:E.acD,bat:E.batD};
+ const L=[["Solar PV modules",p+" pcs",w*U.panel_per_watt,p*w*U.panel_per_watt],["Inverter",S.inv+" kW",U.inverter_per_kw,S.inv*U.inverter_per_kw]];
+ if(S.bat>0)L.push(["Battery storage",S.bat+" kWh",U.bat_kwh,S.bat*U.bat_kwh]);
+ [["Mounting rails",rails,U.rail_4_2m],["Roof hooks",hooks,U.roof_hook],["Mid clamps",Math.max(0,p-rows)*2,U.clamp],["End clamps",rows*4,U.clamp]].forEach(x=>L.push([x[0],x[1]+" pcs",x[2],x[1]*x[2]]));
+ const cnt=ty=>ED.ready?ED.nodes.filter(n=>n.type===ty).length:0;let ex=0;
+ [[`PV DC breaker (${E.pvB} A)`,"prot_pv_dc_breaker","pvb"],[`AC breaker (${E.aB} A)`,"prot_ac_breaker","acb"],["DC surge protector","prot_spd_dc","spdd"],["AC surge protector","prot_spd_ac","spda"]].forEach(x=>{const n=Math.max(1,cnt(x[2]));ex+=(n-1)*U[x[1]];L.push([x[0],n+" pcs",U[x[1]],n*U[x[1]]])});
+ const nm=cnt("bmc"),mp=U.prot_battery_mccb??UD.prot_battery_mccb;if(nm){ex+=nm*mp;L.push([`Battery DC MCCB${E.bB?" ("+E.bB+" A)":""}`,nm+" pcs",mp,nm*mp])}
+ [["Enclosure and busbars","prot_enclosure_misc"],["Conduit and fittings","conduit_fittings"],["Grounding kit","grounding_kit"],["Lugs, glands, ties","lugs_glands_ties"]].forEach(x=>L.push([x[0],"1 lot",U[x[1]],U[x[1]]]));S.extras=Math.round(ex);
+ L.push([`PV DC cable (${E.pvW.t})`,R.pv*2+" m",U.pv_cable_per_m,R.pv*2*U.pv_cable_per_m],[`AC cable (${E.aW.t})`,R.ac*3+" m",U.ac_cable_per_m,R.ac*3*U.ac_cable_per_m]);
+ if(S.bat>0)L.push([`Battery cable (${E.bW.t})`,R.bat*2+" m",U.bat_cable_per_m,R.bat*2*U.bat_cable_per_m]);return L}
+// electrical design (ported from the first tool)
+const WIRES=[[2.5,"14 AWG",20,25],[4,"12 AWG",25,30],[6,"10 AWG",35,40],[10,"8 AWG",50,55],[16,"6 AWG",65,75],[25,"4 AWG",85,95],[35,"2 AWG",115,130],[50,"1/0 AWG",150,170],[70,"2/0 AWG",175,195],[95,"3/0 AWG",200,225],[120,"4/0 AWG",230,260]];
+const CON=[[15,15.8,"½ in (15 mm)"],[20,21,"¾ in (20 mm)"],[25,26.6,"1 in (25 mm)"],[32,35,"1¼ in (32 mm)"],[40,40.9,"1½ in (40 mm)"],[50,52.5,"2 in (50 mm)"],[65,62.7,"2½ in (65 mm)"],[80,77.9,"3 in (80 mm)"]];
+const vocF=t=>t>=20?1.02:t>=15?1.04:t>=10?1.06:t>=5?1.08:t>=0?1.10:t>=-5?1.12:t>=-10?1.14:t>=-15?1.16:t>=-20?1.18:t>=-25?1.20:t>=-30?1.21:t>=-35?1.23:1.25;
+const tf90=t=>t<=25?1.04:t<=30?1:t<=35?.96:t<=40?.91:t<=45?.87:t<=50?.82:t<=55?.76:t<=60?.71:t<=65?.65:.58;
+const areaMm=(i,len,v,dp)=>len*2*i*0.021/(v*dp/100);
+const brk=(a,s)=>s.find(x=>x>=a)||Math.ceil(a/10)*10;
+function wire(vd,i125,iAfter,b,tf){for(const[a,awg,a75,a90]of WIRES){const c=a90*tf;if(a>=vd&&a75>=i125&&c>=iAfter&&c>=b)return{mm:a,t:`${a} mm² (${awg})`}}return{mm:Math.max(vd,120),t:`${Math.ceil(Math.max(vd,120))}+ mm² (engineer to size)`}}
+function conduit(mm,n){const od=1.4*Math.sqrt(mm)+3.5,id=od*Math.sqrt((n+1)/0.4);return(CON.find(c=>c[1]>=id)||CON[7])[2]}
+let E=null;
+function elec(){const g=(id,d)=>{const v=parseFloat($(id).value);return Number.isFinite(v)&&v>0?v:d},z=(id,d)=>{const v=parseFloat($(id).value);return Number.isFinite(v)?v:d};
+ const iSc=g("iSc",13.8),vmp=g("vmp",41.5),voc=g("voc",49.5),maxV=g("maxDcV",500),mpptMin=g("mpptMin",120),mppts=Math.max(1,Math.round(g("mppts",2))),maxPvA=g("maxPvA",25),pvD=g("pvD",25),batD=g("batD",3),acD=g("acD",8),dp=g("drop",2);
+ const vf=vocF(z("lowT",15)),tfR=tf90(z("roofT",45)),tfI=tf90(z("inT",35)),VL=$("bldg").value==="other"?1000:600,bat=S.bat>0,iv=S.inv;
+ const maxS=Math.max(1,Math.floor(Math.min(maxV,VL)/(voc*vf))),minS=Math.ceil(mpptMin/(vmp*.85));
+ let strings=Math.ceil(S.panels/maxS),series=Math.ceil(S.panels/strings);
+ if(series<minS){for(let k=strings-1;k>=1;k--){const sr=Math.ceil(S.panels/k);if(sr>=minS&&sr<=maxS){strings=k;series=sr;break}}}
+ const panels=strings*series,Vs=vmp*series,Isc=iSc*strings,perM=Math.ceil(strings/mppts),IscM=iSc*perM,dcac=panels*S.watts/1000/iv,vCold=voc*series*vf,vHot=Vs*.85;
+ const pvB=brk(Isc*1.56,[10,15,20,25,30,40,50,63,80,100,125]),pvW=wire(areaMm(Isc*1.25,pvD,Vs,dp),Isc*1.5625,Isc*1.25,pvB,tfR),sf=brk(iSc*1.56,[10,12,15,20,25,30,32,40]);
+ const bV=51.2,bI=iv*1000/(bV*.95)*1.25,bB=bat?brk(bI,[40,50,63,80,100,125,150,175,200,250,300,400]):0,bW=bat?wire(areaMm(bI,batD,bV,dp),bI,bI/1.25,bB,tfI):null;
+ const aI=iv*1000/230*1.25,aB=brk(aI,[15,20,30,40,50,60,80,100,125]),aW=wire(areaMm(aI/1.25,acD,230,dp),aI,aI/1.25,aB,tfI);
+ const w=[];if(vCold>Math.min(maxV,VL))w.push(`Cold string voltage (${vCold.toFixed(0)} V) is above the ${Math.min(maxV,VL)} V limit.`);
+ if(vHot<mpptMin)w.push(`Hot string voltage (${vHot.toFixed(0)} V) may fall below the ${mpptMin} V MPPT minimum.`);
+ if(IscM>maxPvA)w.push(`Current per MPPT input (${IscM.toFixed(1)} A) is above the ${maxPvA} A limit.`);
+ if(dcac>1.5)w.push(`Array is ${dcac.toFixed(2)}× the inverter. Expect clipping.`);
+ if(S.roofMax!=null&&S.panels>S.roofMax)w.push(`The roof mapper shows room for ${S.roofMax} panels, but the design uses ${S.panels}.`);
+ if(panels!==S.panels)w.push(`This string layout fits ${panels} panels, not ${S.panels}. Adjust the panel count.`);
+ return{pvD,batD,acD,strings,series,panels,Vs,vCold,vHot,IscM,dcac,mppts,pvB,pvW,sf,bB,bW,aB,aW,w,cP:conduit(pvW.mm,2),cB:bat?conduit(bW.mm,2):null,cA:conduit(aW.mm,3)}}
+function wbHTML(){const r=(a,b)=>`<tr><td>${a}</td><td class="n">${b}</td></tr>`;
+ if(wbi==0)return`<table>${r("PV DC breaker",E.pvB+" A")}${E.strings>2?r("String fuse (each)",E.sf+" A"):""}${r("PV cable",E.pvW.t)}${r("PV conduit",E.cP)}${S.bat>0?r("Battery breaker",E.bB+" A")+r("Battery cable",E.bW.t)+r("Battery conduit",E.cB):""}${r("AC breaker",E.aB+" A")}${r("AC cable",E.aW.t)}${r("AC conduit",E.cA)}</table>`;
+ if(wbi==1)return`<table>${r("Layout",E.strings+" string(s) × "+E.series+" panels")}${r("Panels in layout",E.panels+" × "+S.watts+" W")}${r("String voltage (operating)",E.Vs.toFixed(0)+" V")}${r("String voltage (cold, max)",E.vCold.toFixed(0)+" V")}${r("String voltage (hot, min)",E.vHot.toFixed(0)+" V")}${r("Current per MPPT",E.IscM.toFixed(1)+" A")}${r("DC to AC ratio",E.dcac.toFixed(2))}</table>`;
+ if(wbi==2){const rows=Math.ceil(S.panels/12);return`<table>${r("Rows",rows)}${r("Rails (4.2 m)",Math.ceil(S.panels*2.26/4.2))}${r("Roof hooks",Math.ceil(S.panels*1.5))}${r("Clamps (mid + end)",Math.max(0,S.panels-rows)*2+rows*4)}</table>`}
+ const W=E.w.concat(edWarn());return W.length?W.map(x=>`<p class="bad" style="margin:0 0 8px">${x}</p>`).join(""):`<p class="ok">No warnings.</p>`}
+function stage(){const c="#8e9bb5";return`<svg viewBox="0 0 720 330"><g stroke-width="3" fill="none"><path d="M120 150H210M300 150H340M420 150H470M560 150H600" stroke="#e5484d"/><path d="M120 164H210M300 164H340M420 164H470" stroke="#d6dbe8"/><path d="M390 200V260H250" stroke="#3ecf8e"/></g>
+ ${[["Panels",60,"#2a4a8a"],["DC breaker",250,"#e8edf7"],["Inverter",380,"#e8edf7"],["AC breaker",515,"#e8edf7"],["Home",630,"#e8edf7"]].map(b=>`<rect x="${b[1]-40}" y="120" width="80" height="70" rx="8" fill="${b[2]}" opacity=".9"/><text x="${b[1]}" y="212" fill="${c}" font-size="13" text-anchor="middle">${b[0]}</text>`).join("")}
+ <rect x="210" y="235" width="80" height="50" rx="8" fill="#e8edf7" opacity=".9"/><text x="250" y="302" fill="${c}" font-size="13" text-anchor="middle">Battery</text></svg>`}
+function bomHTML(){const r=bomRows(),t=r.reduce((a,x)=>a+x[3],0);S.cost=S.sim&&!S.manual?S.sim.summary.total_cost_php+(S.extras-(S.sentExtras||0)):t*1.15;
+ return`<table><tr><th>Item</th><th>Qty</th><th class="n">Unit price</th><th class="n">Cost</th></tr>${r.map(x=>`<tr><td>${x[0]}</td><td>${x[1]}</td><td class="n">${php(x[2])}</td><td class="n">${php(x[3])}</td></tr>`).join("")}<tr><td colspan="3"><b>Materials subtotal</b></td><td class="n"><b>${php(t)}</b></td></tr></table>`+(S.extras>0?`<p style="color:var(--mu);margin:8px 0 0">Includes ${php(S.extras)} for extra parts added in the wiring editor.</p>`:"")+(S.sim?`<p style="color:var(--mu);margin:8px 0 0">Not in this list: labor, engineering and permitting, and the net-metering fee (about ${php(S.sim.summary.services_php)}). They are included in the estimated cost above.</p>`:"")}
+// roof mapper
+const mkFace=()=>({pts:[],closed:false,tilt:15,az:180,fit:null}),RM={map:null,faces:[mkFace()],cur:0,drawing:false,g:null,ready:false,loading:false,failed:false},cf=()=>RM.faces[RM.cur];
+const COMP=["North","North-east","East","South-east","South","South-west","West","North-west"],fname=(f,i)=>"Face "+(i+1)+(f.closed?" ("+COMP[Math.round(f.az/45)%8]+")":"");
+const KM=111320,gv=(id,d)=>{const v=parseFloat($(id).value);return Number.isFinite(v)&&v>0?v:d};
+const toXY=(P,la,lo)=>P.map(p=>[(p[1]-lo)*KM*Math.cos(la*Math.PI/180),(p[0]-la)*KM]);
+const fromXY=(p,la,lo)=>[la+p[1]/KM,lo+p[0]/(KM*Math.cos(la*Math.PI/180))];
+const polyArea=P=>Math.abs(P.reduce((a,p,i)=>{const q=P[(i+1)%P.length];return a+p[0]*q[1]-q[0]*p[1]},0))/2;
+function inPoly(P,x,y){let c=false;for(let i=0,j=P.length-1;i<P.length;j=i++){if((P[i][1]>y)!==(P[j][1]>y)&&x<(P[j][0]-P[i][0])*(y-P[i][1])/(P[j][1]-P[i][1])+P[i][0])c=!c}return c}
+function dSeg(x,y,a,b){const dx=b[0]-a[0],dy=b[1]-a[1],l=dx*dx+dy*dy||1e-9,t=Math.max(0,Math.min(1,((x-a[0])*dx+(y-a[1])*dy)/l));return Math.hypot(x-a[0]-t*dx,y-a[1]-t*dy)}
+function fitPanels(P,pw,ph,sb,gap){let best=0,ang=0;P.forEach((a,i)=>{const b=P[(i+1)%P.length],l=Math.hypot(b[0]-a[0],b[1]-a[1]);if(l>best){best=l;ang=Math.atan2(b[1]-a[1],b[0]-a[0])}});
+ const c=Math.cos(-ang),s=Math.sin(-ang),Q=P.map(p=>[p[0]*c-p[1]*s,p[0]*s+p[1]*c]),xs=Q.map(p=>p[0]),ys=Q.map(p=>p[1]),x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys),out=[];
+ const ok=(x,y)=>inPoly(Q,x,y)&&Q.every((a,i)=>dSeg(x,y,a,Q[(i+1)%Q.length])>=sb-1e-9);
+ for(let y=y0+sb;y+ph<=y1-sb+1e-9;y+=ph+gap)for(let x=x0+sb;x+pw<=x1-sb+1e-9;x+=pw+gap)
+  if([[x,y],[x+pw,y],[x,y+ph],[x+pw,y+ph],[x+pw/2,y+ph/2]].every(q=>ok(q[0],q[1])))out.push([x,y]);
+ return{ang,out,pw,ph}}
+function autoAz(ang){const b=(90-ang*180/Math.PI+720)%360,c=[(b+90)%360,(b+270)%360],d=a=>Math.abs(((a-180+540)%360)-180);return Math.round(d(c[0])<=d(c[1])?c[0]:c[1])}
+function rfitFace(f){const P=f.pts;if(!f.closed||P.length<3)return null;
+ const la=P.reduce((a,p)=>a+p[0],0)/P.length,lo=P.reduce((a,p)=>a+p[1],0)/P.length,XY=toXY(P,la,lo),Ln=gv("rL",2.278),Wd=gv("rW",1.134),sb=Math.max(0,parseFloat($("rSb").value)||0),mode=$("rOri").value,tf=(a,b)=>fitPanels(XY,a,b,sb,.02);
+ const g=mode==="portrait"?tf(Wd,Ln):mode==="landscape"?tf(Ln,Wd):[tf(Ln,Wd),tf(Wd,Ln)].sort((a,b)=>b.out.length-a.out.length)[0];
+ return{n:g.out.length,la,lo,area:polyArea(XY),ang:g.ang,g,az:autoAz(g.ang)}}
+function roofTotal(){const c=RM.faces.filter(f=>f.fit);return c.length?c.reduce((a,f)=>a+f.fit.n,0):null}
+function rchips(){$("faces").innerHTML=RM.faces.map((f,i)=>`<button class="btn${i===RM.cur?" on":""}" data-f="${i}">${fname(f,i)}${f.fit?": "+f.fit.n:""}</button>`).join("")+`<button class="btn" id="rAdd">+ Add face</button>`}
+function rstats(){const f=cf(),m=f.fit,el=$("rstats"),tl=f.tilt*Math.PI/180;
+ if(!m){el.innerHTML=`<p style="color:var(--mu);margin:0">${f.pts.length?"Click the remaining corners, then press Finish outline.":"Press Draw roof, click each corner of this roof face, then Finish outline."}</p>`}
+ else el.innerHTML=`<table><tr><td>Footprint</td><td class="n">${m.area.toFixed(1)} m²</td></tr><tr><td>Sloped area</td><td class="n">${(m.area/Math.cos(tl)).toFixed(1)} m²</td></tr><tr><td>Panels on this face</td><td class="n"><b>${m.n}</b></td></tr><tr><td>Suggested direction</td><td class="n">${m.az}°</td></tr></table>`;
+ const tot=roofTotal(),e=$("rfit"),need=S.panels;
+ if(tot==null){e.textContent="";$("rNote").textContent="";return}
+ const faces=RM.faces.filter(x=>x.fit).length,dom=RM.faces.reduce((b,x)=>x.fit&&(!b||x.fit.n>b.fit.n)?x:b,null);
+ e.className=tot>=need?"ok":"bad";e.textContent=(faces>1?`All ${faces} faces: ${tot} panels (${(tot*S.watts/1000).toFixed(2)} kWp). `:`${(tot*S.watts/1000).toFixed(2)} kWp. `)+(tot>=need?`Roof verified: ${need} needed, ${tot-need} spare.`:`Roof is too small: ${need} needed.`);
+ $("rNote").textContent=faces>1?"Each face is simulated with its own tilt and direction.":""}
+function rdraw(){RM.faces.forEach(f=>f.fit=rfitFace(f));
+ if(RM.ready){RM.g.clearLayers();RM.faces.forEach((f,i)=>{const P=f.pts,on=i===RM.cur,col=on?"#f2a900":"#8e9bb5";if(!P.length)return;
+  if(f.closed&&P.length>2){const pg=L.polygon(P,{color:col,weight:2,fillOpacity:.08}).addTo(RM.g);pg.bindTooltip(fname(f,i),{permanent:true,direction:"center"})}else L.polyline(P,{color:col,weight:2}).addTo(RM.g);
+  if(on)P.forEach(p=>L.circleMarker(p,{radius:4,color:col,fillOpacity:1}).addTo(RM.g));
+  if(f.fit){const g=f.fit.g,c=Math.cos(g.ang),s=Math.sin(g.ang);g.out.forEach(([x,y])=>{const q=[[x,y],[x+g.pw,y],[x+g.pw,y+g.ph],[x,y+g.ph]].map(p=>fromXY([p[0]*c-p[1]*s,p[0]*s+p[1]*c],f.fit.la,f.fit.lo));L.polygon(q,{color:"#9ec1ff",weight:1,fillColor:on?"#2a4a8a":"#3a4560",fillOpacity:.75,interactive:false}).addTo(RM.g)})}})}
+ S.roofMax=roofTotal();rchips();rstats();if(E)render()}
+function useFace(i){RM.cur=i;RM.drawing=false;$("rTilt").value=cf().tilt;$("rAz").value=cf().az;$("rMsg").textContent="";rdraw();drawSun()}
+async function initMap(){if(RM.ready){RM.map.invalidateSize();return}if(RM.loading||RM.failed)return;RM.loading=true;
+ try{const l=document.createElement("link");l.rel="stylesheet";l.href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css";document.head.appendChild(l);await loadJs("https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js")}
+ catch(e){RM.loading=false;RM.failed=true;$("rmap").textContent="The map needs internet access to load. You can still use the sun path below.";return}
+ $("rmap").textContent="";$("rmap").style.padding="0";const m=RM.map=L.map("rmap").setView([gv("lat",14.5995),gv("lon",120.9842)],17);
+ L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{maxZoom:20,maxNativeZoom:18,attribution:"Imagery © Esri"}).addTo(m);
+ RM.g=L.layerGroup().addTo(m);m.on("click",e=>{if(!RM.drawing||cf().closed)return;cf().pts.push([e.latlng.lat,e.latlng.lng]);rdraw()});RM.ready=true;RM.loading=false;rdraw()}
+document.querySelectorAll("[data-reg]").forEach(b=>b.onclick=()=>{if(RM.ready){const[a,o]=b.dataset.reg.split(",").map(Number);RM.map.setView([a,o],17)}});
+$("rgo").onclick=async()=>{const q=$("rq").value.trim();if(!q||!RM.ready)return;$("rMsg").textContent="Searching…";
+ try{const r=await fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&q="+encodeURIComponent(q)),d=await r.json();if(d[0]){RM.map.setView([+d[0].lat,+d[0].lon],18);$("rMsg").textContent=""}else $("rMsg").textContent="No match. Try a nearby city or barangay."}catch(e){$("rMsg").textContent="Search failed. Check your connection."}};
+$("rq").onkeydown=e=>{if(e.key==="Enter")$("rgo").click()};
+$("faces").onclick=e=>{const b=e.target.closest("button");if(!b)return;
+ if(b.id==="rAdd"){RM.faces.push(mkFace());useFace(RM.faces.length-1);if(RM.ready){RM.drawing=true;$("rMsg").textContent="Click each corner of the new roof face."}}
+ else if(b.dataset.f!=null)useFace(+b.dataset.f)};
+$("rDraw").onclick=()=>{if(!RM.ready)return;const f=cf();f.pts=[];f.closed=false;RM.drawing=true;$("rMsg").textContent="Click each roof corner on the map.";rdraw()};
+$("rFin").onclick=()=>{const f=cf();if(f.pts.length<3){$("rMsg").textContent="Add at least 3 corners first.";return}f.closed=true;RM.drawing=false;$("rMsg").textContent="";rdraw();if(f.fit){f.az=f.fit.az;$("rAz").value=f.az;rdraw()}drawSun()};
+$("rClr").onclick=()=>{const f=cf();f.pts=[];f.closed=false;RM.drawing=false;$("rMsg").textContent="";rdraw()};
+$("rDel").onclick=()=>{if(RM.faces.length>1){RM.faces.splice(RM.cur,1);useFace(Math.max(0,RM.cur-1))}else $("rClr").click()};
+["rL","rW","rOri","rSb"].forEach(i=>$(i).addEventListener("input",()=>{rdraw();drawSun()}));
+$("rTilt").addEventListener("input",()=>{cf().tilt=parseFloat($("rTilt").value)||0;rstats();drawSun()});
+$("rAz").addEventListener("input",()=>{cf().az=parseFloat($("rAz").value)||0;rchips();drawSun()});
+function sendSite(){const cl=RM.faces.filter(f=>f.fit),dom=cl.reduce((b,x)=>!b||x.fit.n>b.fit.n?x:b,null);
+ if(cl.length){$("lat").value=(cl.reduce((a,f)=>a+f.fit.la,0)/cl.length).toFixed(5);$("lon").value=(cl.reduce((a,f)=>a+f.fit.lo,0)/cl.length).toFixed(5);S.tilt=dom.tilt;S.az=dom.az;S.faces=cl.map(f=>({name:fname(f,RM.faces.indexOf(f)),tilt:f.tilt,azimuth:f.az,max_panels:f.fit.n}))}
+ else{if(RM.ready){$("lat").value=RM.map.getCenter().lat.toFixed(5);$("lon").value=RM.map.getCenter().lng.toFixed(5)}S.tilt=cf().tilt;S.az=cf().az;S.faces=[]}
+}
+$("rSend").onclick=()=>{sendSite();location.hash="tool";runSim()};
+rdraw();
+function sunPos(lat,doy,h){const d=23.44*Math.sin(2*Math.PI*(284+doy)/365)*Math.PI/180,la=lat*Math.PI/180,H=(h-12)*15*Math.PI/180,al=Math.asin(Math.sin(la)*Math.sin(d)+Math.cos(la)*Math.cos(d)*Math.cos(H)),A=Math.atan2(Math.sin(H),Math.cos(H)*Math.sin(la)-Math.tan(d)*Math.cos(la));return{alt:al*180/Math.PI,az:(A*180/Math.PI+180+360)%360}}
+function drawSun(){const lat=parseFloat($("lat").value)||14.6,doy=+$("sunD").value,h=+$("sun").value,tl=(parseFloat($("rTilt").value)||0)*Math.PI/180,az=parseFloat($("rAz").value)||180,cx=160,cy=160,Rr=135;
+ const xy=(a,al)=>{const r=Rr*(1-Math.max(al,0)/90),q=a*Math.PI/180;return[cx+r*Math.sin(q),cy-r*Math.cos(q)]};
+ let d="";for(let k=4;k<=20;k+=.25){const s=sunPos(lat,doy,k);if(s.alt>0){const p=xy(s.az,s.alt);d+=(d?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)}}
+ const s=sunPos(lat,doy,h),p=xy(s.az,s.alt),a=xy(az,45),sl=s.alt>0?Math.max(0,Math.sin(s.alt*Math.PI/180)*Math.cos(tl)+Math.cos(s.alt*Math.PI/180)*Math.sin(tl)*Math.cos((s.az-az)*Math.PI/180)):0;
+ $("sunH").textContent=Math.floor(h)+":"+(h%1?"30":"00");
+ $("sunSvg").innerHTML=[0,30,60].map(al=>`<circle cx="${cx}" cy="${cy}" r="${Rr*(1-al/90)}" fill="none" stroke="#27344d"/>`).join("")+`<path d="M${cx} ${cy-Rr}V${cy+Rr}M${cx-Rr} ${cy}H${cx+Rr}" stroke="#27344d"/>`+[["N",cx,16],["S",cx,314],["E",312,cy+4],["W",8,cy+4]].map(l=>`<text x="${l[1]}" y="${l[2]}" fill="#8e9bb5" font-size="13" text-anchor="middle">${l[0]}</text>`).join("")+`<path d="${d}" fill="none" stroke="#f2a900" stroke-width="2"/><line x1="${cx}" y1="${cy}" x2="${a[0]}" y2="${a[1]}" stroke="#4ea1ff" stroke-width="3"/>`+(s.alt>0?`<circle cx="${p[0]}" cy="${p[1]}" r="8" fill="#f2a900"/>`:"");
+ const dir=["N","NE","E","SE","S","SW","W","NW"][Math.round(s.az/45)%8];
+ $("sunInfo").innerHTML=s.alt>0?`Sun is ${s.alt.toFixed(0)}° above the horizon, toward ${dir} (${s.az.toFixed(0)}°).<br>Light reaching the panels: <b>${Math.round(sl*100)}%</b> of full strength.<br><span style="color:var(--mu)">The blue line shows the direction the roof faces.</span>`:`The sun is below the horizon at this hour.`}
+$("sunD").onchange=drawSun;$("sun").oninput=drawSun;
+// 12-month solar profile
+const DM=[31,28,31,30,31,30,31,31,30,31,30,31];
+function irr(){const d=S.sim,svg=$("irr");
+ if(!d){svg.innerHTML='<text x="360" y="130" fill="#8e9bb5" font-size="14" text-anchor="middle">No data yet. Run the simulation for this site.</text>';$("irrSum").textContent="";$("irrNote").textContent="Shows how much usable sunlight each month brings to this roof.";return}
+ const s=d.summary,kw=s.panel_count*s.panel_watts/1000,P=d.monthly.map((r,i)=>r.gen/DM[i]/kw/.86),avg=P.reduce((a,v,i)=>a+v*DM[i],0)/365,mx=Math.max(6,Math.ceil(Math.max(...P))),Y=v=>220-v/mx*190;
+ let h="";for(let v=0;v<=mx;v++)h+=`<path d="M30 ${Y(v)}H712" stroke="#27344d"/><text x="22" y="${Y(v)+4}" fill="#8e9bb5" font-size="11" text-anchor="end">${v}</text>`;
+ const hi=P.indexOf(Math.max(...P)),lo=P.indexOf(Math.min(...P));
+ h+=P.map((v,i)=>{const x=36+i*56,m=d.monthly[i].month;return`<rect x="${x}" y="${Y(v)}" width="40" height="${220-Y(v)}" rx="4" fill="#f2a900" opacity="${v>=avg?1:.55}"><title>${m}: about ${v.toFixed(1)} peak sun hours per day (${(v*.86*DM[i]).toFixed(0)} kWh per kWp this month)</title></rect><text x="${x+20}" y="${Y(v)-5}" fill="#e8edf7" font-size="11" text-anchor="middle">${v.toFixed(1)}</text><text x="${x+20}" y="238" fill="#8e9bb5" font-size="12" text-anchor="middle">${m}</text>`}).join("");
+ h+=`<path d="M30 ${Y(avg)}H712" stroke="#e8edf7" stroke-dasharray="5 4"/><text x="712" y="${Y(avg)-5}" fill="#e8edf7" font-size="11" text-anchor="end">Average ${avg.toFixed(1)}</text><text x="22" y="14" fill="#8e9bb5" font-size="11" text-anchor="end">hours</text>`;
+ svg.innerHTML=h;
+ const c=S.simCtx,fb=/^FALLBACK/.test(d.assumptions.yield_source);
+ $("irrSum").innerHTML=`Annual average: <b>${avg.toFixed(2)} peak sun hours per day</b>, about ${s.specific_yield_kwh_per_kwp} kWh per kWp per year. Best month: ${d.monthly[hi].month} (${P[hi].toFixed(1)}). Lowest: ${d.monthly[lo].month} (${P[lo].toFixed(1)}).`;
+ if(s.faces&&s.faces.length>1)$("irrSum").innerHTML+=`<table style="margin-top:8px"><tr><th>Face</th><th class="n">Panels</th><th class="n">kWp</th><th class="n">Tilt / dir</th><th class="n">kWh/kWp·yr</th><th class="n">kWh/yr</th></tr>${s.faces.map(f=>`<tr><td>${f.name}</td><td class="n">${f.panels}</td><td class="n">${f.kwp}</td><td class="n">${f.tilt}° / ${f.azimuth}°</td><td class="n">${f.specific_yield_kwh_per_kwp}</td><td class="n">${f.annual_kwh.toLocaleString()}</td></tr>`).join("")}</table>`;
+ $("irrNote").className=fb?"bad":"";$("irrNote").style.color=fb?"":"var(--mu)";
+ $("irrNote").textContent=fb?"PVGIS was unavailable, so this is a flat estimate and not real site data.":`Estimated from the simulated solar output${c?(s.faces&&s.faces.length>1?` at ${c.lat.toFixed(2)}°, ${c.lon.toFixed(2)}° (${s.faces.length} roof faces)`:` at ${c.lat.toFixed(2)}°, ${c.lon.toFixed(2)}° (tilt ${c.tilt}°, facing ${c.az}°)`):""}, using ${d.assumptions.yield_source}. Heat losses make these slightly lower than raw sunlight. Faded bars are below the average.`}
+$("irrRun").onclick=async()=>{sendSite();$("irrMsg").textContent="Running the simulation for this site…";await runSim();$("irrMsg").textContent=$("simMsg").textContent};
+// simulation
+function applySim(d){const s=d.summary;S.sim=d;S.U=d.assumptions.unit_prices;S.manual=false;Object.assign(S,{kwp:s.system_kw,inv:s.inverter_kw,bat:s.battery_kwh,panels:s.panel_count,watts:s.panel_watts,cost:s.total_cost_php})}
+async function runSim(retry){const m=$("simMsg"),b={topology:$("topo").value,monthly_kwh:+$("mkwh").value,lat:+$("lat").value,lon:+$("lon").value,panel_watts:S.watts,tilt:S.tilt==null?15:S.tilt,azimuth:S.az==null?180:S.az,extra_materials_php:Math.round(S.extras||0),pv_run_m:E.pvD,ac_run_m:E.acD,bat_run_m:E.batD,tariff_escalation_pct:+$("esc").value,degradation_pct:+$("deg").value};
+ if($("tariff").value!=="")b.retail_rate=+$("tariff").value;if(S.manual)b.system_kw=S.panels*S.watts/1000;if(S.faces&&S.faces.length)b.faces=S.faces;
+ m.textContent="Running simulation…";let r,d;
+ try{r=await fetch("/api/simulate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});d=await r.json()}
+ catch(e){m.textContent="Cannot reach the server. Run uvicorn pv_api:app, then open this page at http://localhost:8000/app.html.";return}
+ if(!r.ok){m.textContent="Request failed ("+r.status+"): "+(typeof d.detail==="string"?d.detail:JSON.stringify(d.detail));return}
+ applySim(d);S.sentExtras=b.extra_materials_php;S.simCtx={lat:b.lat,lon:b.lon,tilt:b.tilt,az:b.azimuth};E=elec();
+ if(!retry&&E.panels!==S.panels){S.panels=E.panels;S.manual=true;await runSim(true);m.textContent="Panel count set to "+E.panels+" so every string is full. "+m.textContent;return}
+ m.textContent="Simulation complete. Yield data: "+d.assumptions.yield_source+".";render()}
+$("runBtn").onclick=()=>runSim();$("recalc").onclick=()=>runSim();$("ymon").onchange=()=>yld();
+function roi(){const d=S.sim;if(!d){$("roiOut").innerHTML=`<p style="color:var(--mu)">Run a simulation to see savings and payback.</p><button class="btn pri" data-go="tool">Open the solar tool</button>`;$("cf").innerHTML="";return}
+ const s=d.summary,f=d.cash_flow,mx=Math.max(...f.map(x=>Math.abs(x.cumulative_php)),1),Y=v=>110-v/mx*90;
+ const stale=(S.extras||0)!==(S.sentExtras||0)?`<p class="bad" style="margin:8px 0 0">Parts in the wiring editor changed the materials cost. Run the simulation again to update payback.</p>`:"";
+ $("roiOut").innerHTML=stale+`<table><tr><td>Estimated cost</td><td class="n">${php(s.total_cost_php)}</td></tr><tr><td>Year 1 savings</td><td class="n"><b>${php(s.year1_savings_php)}</b></td></tr><tr><td>Payback</td><td class="n"><b>${s.payback_years==null?"over "+f.length+" years":s.payback_years+" years"}</b></td></tr><tr><td>Net gain over ${f.length} years</td><td class="n">${php(s.net_gain_over_horizon_php)}</td></tr><tr><td>Solar coverage</td><td class="n">${s.solar_coverage_pct}%</td></tr></table>`;
+ $("cf").innerHTML=`<path d="M0 110H720" stroke="#27344d"/><path d="${f.map((x,i)=>(i?"L":"M")+(20+i*28)+" "+Y(x.cumulative_php)).join("")}" fill="none" stroke="#f2a900" stroke-width="3"/>`+f.filter(x=>x.year%5==0).map(x=>`<text x="${20+(x.year-1)*28}" y="214" fill="#8e9bb5" font-size="11" text-anchor="middle">Year ${x.year}</text>`).join("")}
+// yield monitor: live energy flow
+let YP=null;
+function stopPlay(){if(YP){clearInterval(YP);YP=null}$("yPlay").textContent="Play day"}
+function ydata(){const d=S.sim;if(d){const t=d.typical_day[+$("ymon").value];return{pv:t.pv,ld:t.load,gr:t.grid,soc:t.soc,real:true}}
+ const pv=[...Array(24)].map((_,h)=>Math.max(0,Math.sin((h-6)/12*Math.PI))*S.kwp*.8),ld=Array(24).fill(.4);return{pv,ld,gr:pv.map((p,h)=>Math.max(0,ld[h]-p)),soc:Array(24).fill(0),real:false}}
+function flows(D,h){const pv=D.pv[h],ld=D.ld[h],gr=D.gr[h],bat=S.bat>0,hp=(h+23)%24,dSt=bat?(D.soc[h]-D.soc[hp])/100*S.bat:0,surplus=Math.max(0,pv-ld),deficit=Math.max(0,ld-pv),
+ charge=bat?Math.min(surplus,Math.max(0,dSt)):0,disch=bat?Math.max(0,deficit-gr):0;
+ return{pv,ld,imp:gr,charge,disch,spare:Math.max(0,surplus-charge),soc:D.soc[h]}}
+function drawFlow(){const D=ydata(),h=+$("yh").value,F=flows(D,h),top=D.real?S.sim.summary.topology:"hybrid-no-export",off=top==="off-grid",expo=top==="grid-tied"||top==="hybrid-export",bat=S.bat>0;
+ const mx=Math.max(...D.pv,...D.ld,.5),sw=v=>(2+6*Math.min(1,v/mx)).toFixed(1),N={sol:[130,70],home:[590,70],bat:[130,290],grid:[590,290],hub:[360,180]},K=.005;
+ const fl=(a,b,v,c)=>v>K?`<path class="fl" d="M${a[0]} ${a[1]}L${b[0]} ${b[1]}" stroke="${c}" stroke-width="${sw(v)}" fill="none"/>`:`<path d="M${a[0]} ${a[1]}L${b[0]} ${b[1]}" stroke="#27344d" stroke-width="2" fill="none"/>`;
+ const exp=expo?F.spare:0,imp=off?0:F.imp,kw=v=>v.toFixed(2)+" kW";
+ const node=(p,title,val,sub,c)=>`<rect x="${p[0]-95}" y="${p[1]-38}" width="190" height="76" rx="12" style="fill:var(--pn2);stroke:${c}" stroke-width="2"/><text x="${p[0]}" y="${p[1]-14}" fill="#8e9bb5" font-size="13" text-anchor="middle">${title}</text><text x="${p[0]}" y="${p[1]+9}" fill="#e8edf7" font-size="21" font-weight="600" text-anchor="middle">${val}</text><text x="${p[0]}" y="${p[1]+28}" fill="#8e9bb5" font-size="12" text-anchor="middle">${sub}</text>`;
+ const gridSub=off?"Not connected":exp>K?"Exporting":imp>K?"Importing":"Standby";
+ $("flow").innerHTML=fl(N.sol,N.hub,F.pv,"#f2a900")+fl(N.hub,N.home,F.ld,"#3ecf8e")+(bat?(F.charge>K?fl(N.hub,N.bat,F.charge,"#4ea1ff"):fl(N.bat,N.hub,F.disch,"#4ea1ff")):fl(N.bat,N.hub,0,""))+(exp>K?fl(N.hub,N.grid,exp,"#8e9bb5"):fl(N.grid,N.hub,imp,"#8e9bb5"))
+  +`<circle cx="360" cy="180" r="48" style="fill:var(--pn);stroke:var(--ln)" stroke-width="2"/><text x="360" y="176" fill="#e8edf7" font-size="13" text-anchor="middle">${bat?"Hybrid":"Grid-tied"}</text><text x="360" y="194" fill="#8e9bb5" font-size="12" text-anchor="middle">inverter ${S.inv} kW</text>`
+  +node(N.sol,"Solar panels",kw(F.pv),F.pv>K?"Generating":"No sun","#f2a900")+node(N.home,"Home",kw(F.ld),"Using now","#3ecf8e")
+  +node(N.bat,"Battery",bat?Math.round(F.soc)+"%":"None",bat?(F.charge>K?"Charging "+kw(F.charge):F.disch>K?"Discharging "+kw(F.disch):"Idle"):"Not in this design","#4ea1ff")
+  +node(N.grid,"Utility grid",off?"Off-grid":kw(exp>K?exp:imp),gridSub,"#8e9bb5");
+ $("yhT").textContent=String(h).padStart(2,"0")+":00";
+ const st=$("yStatus");
+ if(F.ld<K)st.textContent="Nothing is using power at this hour.";
+ else if(off)st.textContent=F.pv>=F.ld-K?"Solar covers the whole load.":F.disch>K?"Solar and battery are running the home.":"Not enough power at this hour. Part of the load goes unserved.";
+ else if(imp<K)st.textContent=F.pv>=F.ld-K?"The home is 100% solar powered right now.":"Solar and battery cover the whole load. No grid power needed.";
+ else if(imp>=F.ld-K)st.textContent=`The grid is supplying the whole load (${kw(imp)}).`;
+ else st.textContent=`${Math.round(100*(F.ld-imp)/F.ld)}% of the load comes from solar${bat?" and battery":""}. The grid supplies ${kw(imp)}.`;
+ if(D.real&&!expo&&!off&&F.spare>K)st.textContent+=` ${kw(F.spare)} of solar is unused because export is off.`}
+function yld(){const D=ydata(),h=+$("yh").value,d=S.sim;
+ $("ynote").textContent=d?"Average day for the selected month, from the simulation.":"Rough estimate only. Run the simulation in the solar tool for real data.";
+ const mx=Math.max(...D.pv,...D.ld,...D.gr,.1),Y=v=>220-v/mx*190,ln=(a,c,w,f)=>`<path d="${a.map((v,i)=>(i?"L":"M")+(i*30)+" "+f(v)).join("")}" fill="none" stroke="${c}" stroke-width="${w}"/>`,
+  mk=`<path d="M${h*30} 20V220" stroke="#e8edf7" stroke-dasharray="4 4"/>`,ax='<path d="M0 220H720" stroke="#27344d"/>'+[0,6,12,18,23].map(x=>`<text x="${x*30}" y="236" fill="#8e9bb5" font-size="11" text-anchor="middle">${x}:00</text>`).join("");
+ $("curve").innerHTML=ln(D.pv,"#f2a900",3,Y)+ln(D.ld,"#3ecf8e",2,Y)+ln(D.gr,"#8e9bb5",1.5,Y)+ax+mk;
+ $("socCurve").innerHTML=S.bat>0?ln(D.soc,"#4ea1ff",3,v=>220-v/100*190)+ax+mk+'<text x="4" y="30" fill="#8e9bb5" font-size="11">100%</text>':`<text x="360" y="120" fill="#8e9bb5" font-size="14" text-anchor="middle">No battery in this design.</text>`;
+ drawFlow()}
+{const pick=e=>{const r=e.currentTarget.getBoundingClientRect();$("yh").value=Math.max(0,Math.min(23,Math.round((e.clientX-r.left)/r.width*720/30)));yld()};$("curve").onclick=pick;$("socCurve").onclick=pick}
+$("yh").oninput=yld;
+$("yPlay").onclick=()=>{if(YP){stopPlay();return}$("yPlay").textContent="Pause";YP=setInterval(()=>{$("yh").value=(+$("yh").value+1)%24;yld()},700)};
+// projects (in memory, plus localStorage when available)
+let P=[];try{P=JSON.parse(localStorage.getItem("ss_projects")||"[]")}catch(e){}
+$("save").onclick=()=>{const n=$("pname").value.trim()||`${S.kwp} kWp system`;P.unshift({n,kwp:S.kwp,inv:S.inv,bat:S.bat,panels:S.panels,d:new Date().toLocaleDateString()});try{localStorage.setItem("ss_projects",JSON.stringify(P))}catch(e){}$("pname").value="";render()};
+$("plist").onclick=e=>{const i=e.target.closest("[data-o]");if(i){Object.assign(S,P[+i.dataset.o]);location.hash="tool"}};
+function plist(){$("plist").innerHTML=P.length?P.map((p,i)=>`<button class="box card" data-o="${i}"><h2>${p.n}</h2><span style="color:var(--mu)">${p.kwp} kWp, ${p.inv} kW inverter, ${p.bat} kWh battery<br>Saved ${p.d}</span></button>`).join(""):`<p style="color:var(--mu)">No saved projects yet. Save the current design to see it here.</p>`}
+// 3D wiring editor (three.js, loaded on first visit to the Solar tool)
+const ED={ready:false,loading:false,failed:false,nodes:[],wires:[],mode:"move",sel:null,pend:null,hist:[],id:0,key:"",t:null};
+const TY={pv:["PV array",0x2a4a8a],inv:["Inverter",0xe8edf7,[1.6,2,.9]],bat:["Battery",0x3ecf8e,[1.3,1.5,.9]],pvb:["PV DC breaker",0xe5484d,[.8,1,.5]],acb:["AC breaker",0xf2a900,[.8,1,.5]],bmc:["Battery MCCB",0xb86bff,[.8,1,.5]],spdd:["DC surge protector",0x4ea1ff,[.7,.9,.5]],spda:["AC surge protector",0x4ea1ff,[.7,.9,.5]],home:["Home",0xdadfe9,[2.4,1.8,2.4]]};
+const WK={p:0xe5484d,n:0xd6dbe8,g:0x3ecf8e};
+const loadJs=src=>new Promise((ok,no)=>{const s=document.createElement("script");s.src=src;s.onload=ok;s.onerror=no;document.head.appendChild(s)});
+const pvSize=()=>[Math.min(S.panels,6)*1.15,.14,Math.ceil(S.panels/6)*1.95];
+function lbl(txt,y){const c=document.createElement("canvas");c.width=256;c.height=64;const g=c.getContext("2d");g.fillStyle="#e8edf7";g.font="26px sans-serif";g.textAlign="center";g.fillText(txt,128,40);
+ const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthTest:false}));sp.scale.set(2.6,.65,1);sp.position.y=y;return sp}
+function mkNode(type,x,z,id){const d=TY[type],s=type==="pv"?pvSize():d[2],m=new THREE.Mesh(new THREE.BoxGeometry(s[0],s[1],s[2]),new THREE.MeshStandardMaterial({color:d[1],roughness:.55,emissive:0x000000}));
+ m.position.set(x,s[1]/2,z);
+ if(type==="pv")m.add(new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry),new THREE.LineBasicMaterial({color:0x8fb4ff})));
+ m.add(lbl(d[0],s[1]/2+.6));ED.t.sc.add(m);const n={id,type,x,z,mesh:m};ED.nodes.push(n);return n}
+const anchor=n=>new THREE.Vector3(n.x,n.mesh.geometry.parameters.height+.05,n.z);
+function wmesh(w){const a=ED.nodes.find(n=>n.id===w.a),b=ED.nodes.find(n=>n.id===w.b);if(!a||!b)return;
+ const k=ED.wires.filter(x=>x.a===w.a&&x.b===w.b||x.a===w.b&&x.b===w.a).indexOf(w),A=anchor(a),B=anchor(b),h=Math.max(A.y,B.y)+1.1+k*.3;A.x+=k*.1;B.x+=k*.1;
+ const P=[A,new THREE.Vector3(A.x,h,A.z),new THREE.Vector3(B.x,h,B.z),B],cp=new THREE.CurvePath();for(let i=0;i<3;i++)cp.add(new THREE.LineCurve3(P[i],P[i+1]));
+ if(w.m){ED.t.sc.remove(w.m);w.m.geometry.dispose()}
+ const m=new THREE.Mesh(new THREE.TubeGeometry(cp,24,.05,5,false),new THREE.MeshStandardMaterial({color:WK[w.k],emissive:WK[w.k],emissiveIntensity:.25}));m.userData.wire=w;ED.t.sc.add(m);w.m=m}
+const rewire=()=>ED.wires.forEach(wmesh);
+const glow=(n,c)=>{if(n)n.mesh.material.emissive.setHex(c)};
+function sel(n){if(ED.sel&&ED.sel!==(ED.pend&&ED.pend.id))glow(ED.nodes.find(x=>x.id===ED.sel),0);ED.sel=n?n.id:null;glow(n,0x2a2a2a)}
+function snap(){return JSON.stringify({n:ED.nodes.map(n=>({id:n.id,t:n.type,x:n.x,z:n.z})),w:ED.wires.map(w=>({a:w.a,b:w.b,k:w.k}))})}
+function push(){ED.hist.push(snap());if(ED.hist.length>50)ED.hist.shift();upd()}
+function clearScene(){ED.nodes.forEach(n=>ED.t.sc.remove(n.mesh));ED.wires.forEach(w=>w.m&&ED.t.sc.remove(w.m));ED.nodes=[];ED.wires=[];ED.sel=ED.pend=null}
+function loadSnap(s){clearScene();const o=JSON.parse(s);o.n.forEach(n=>mkNode(n.t,n.x,n.z,n.id));o.w.forEach(w=>ED.wires.push({a:w.a,b:w.b,k:w.k}));rewire();upd()}
+function undo(){if(!ED.ready)return;const s=ED.hist.pop();if(s)loadSnap(s)}
+function rmNode(id){const n=ED.nodes.find(x=>x.id===id);if(!n)return;ED.t.sc.remove(n.mesh);ED.nodes=ED.nodes.filter(x=>x!==n);ED.wires=ED.wires.filter(w=>{if(w.a===id||w.b===id){w.m&&ED.t.sc.remove(w.m);return false}return true});rewire()}
+function seed(){clearScene();const N=(ty,x,z)=>mkNode(ty,x,z,++ED.id).id,pv=N("pv",-7,0),pb=N("pvb",-3.5,-3),iv=N("inv",0,-3),ab=N("acb",3.5,-3),hm=N("home",7,0),bt=S.bat>0?N("bat",0,3):0,pr=(a,b)=>ED.wires.push({a,b,k:"p"},{a,b,k:"n"});
+ pr(pv,pb);pr(pb,iv);pr(iv,ab);pr(ab,hm);if(bt)pr(bt,iv);ED.wires.push({a:iv,b:hm,k:"g"});rewire();ED.hist=[];ED.key=S.panels+"|"+(S.bat>0);upd()}
+function conn(a,b){const seen=new Set([a]),q=[a];while(q.length){const c=q.pop();for(const w of ED.wires){const o=w.a===c?w.b:w.b===c?w.a:null;if(o&&!seen.has(o)){seen.add(o);q.push(o)}}}return seen.has(b)}
+function edWarn(){if(!ED.ready)return[];const f=ty=>ED.nodes.find(n=>n.type===ty),pv=f("pv"),iv=f("inv"),bt=f("bat"),hm=f("home"),o=[];
+ if(pv&&iv&&!conn(pv.id,iv.id))o.push("The PV array is not wired to the inverter.");
+ if(bt&&iv&&!conn(bt.id,iv.id))o.push("The battery is not wired to the inverter.");
+ if(iv&&hm&&!conn(iv.id,hm.id))o.push("The inverter is not wired to the home.");
+ if(!ED.wires.some(w=>w.k==="g"))o.push("No ground conductor is drawn.");return o}
+function upd(){$("edInfo").textContent=`${ED.nodes.length} parts, ${ED.wires.length} wires. Drag parts to move them. In a wire mode, click two parts to connect them. Delete removes the selected part.`;$("edUndo").textContent="Undo ("+ED.hist.length+")"; if(E&&!ED.inR){ED.inR=true;try{render()}finally{ED.inR=false}}}
+function syncEd(){if(!ED.ready)return;const key=S.panels+"|"+(S.bat>0);if(key===ED.key)return;ED.key=key;
+ const pv=ED.nodes.find(n=>n.type==="pv");if(pv){const s=pvSize();pv.mesh.geometry.dispose();pv.mesh.geometry=new THREE.BoxGeometry(s[0],s[1],s[2]);pv.mesh.position.y=s[1]/2;const e=pv.mesh.children.find(c=>c.isLineSegments);if(e){e.geometry.dispose();e.geometry=new THREE.EdgesGeometry(pv.mesh.geometry)}}
+ const bt=ED.nodes.find(n=>n.type==="bat"),iv=ED.nodes.find(n=>n.type==="inv");
+ if(S.bat>0&&!bt&&iv){const b=mkNode("bat",iv.x,iv.z+6,++ED.id);ED.wires.push({a:b.id,b:iv.id,k:"p"},{a:b.id,b:iv.id,k:"n"})}
+ if(!(S.bat>0)&&bt)rmNode(bt.id);
+ rewire();upd()}
+async function initEditor(){if(ED.ready||ED.loading||ED.failed)return;ED.loading=true;
+ try{await loadJs("https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js");await loadJs("https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js")}
+ catch(e){ED.loading=false;ED.failed=true;$("stage").innerHTML=stage();$("edInfo").textContent="The 3D view needs internet access to load three.js. Showing the static diagram instead.";return}
+ const el=$("stage"),W=()=>el.clientWidth||600,H=()=>el.clientHeight||430;el.innerHTML="";
+ const sc=new THREE.Scene();sc.background=new THREE.Color(0x0a0f1a);const cam=new THREE.PerspectiveCamera(45,W()/H(),.1,200);cam.position.set(0,13,17);
+ const rd=new THREE.WebGLRenderer({antialias:true});rd.setPixelRatio(Math.min(devicePixelRatio||1,2));rd.setSize(W(),H());el.appendChild(rd.domElement);
+ const oc=new THREE.OrbitControls(cam,rd.domElement);oc.maxPolarAngle=Math.PI/2.05;
+ sc.add(new THREE.AmbientLight(0xffffff,.75));const dl=new THREE.DirectionalLight(0xffffff,.8);dl.position.set(6,12,8);sc.add(dl);sc.add(new THREE.GridHelper(40,40,0x27344d,0x18233a));
+ ED.t={sc,cam,rd,oc};
+ const ray=new THREE.Raycaster(),pl=new THREE.Plane(new THREE.Vector3(0,1,0),0),ndc=new THREE.Vector2(),pt=new THREE.Vector3();let drag=null,moved=false;
+ const aim=e=>{const r=rd.domElement.getBoundingClientRect();ndc.set((e.clientX-r.left)/r.width*2-1,-((e.clientY-r.top)/r.height)*2+1);ray.setFromCamera(ndc,cam)};
+ const hitNode=()=>{const h=ray.intersectObjects(ED.nodes.map(n=>n.mesh),false)[0];return h?ED.nodes.find(n=>n.mesh===h.object):null};
+ rd.domElement.addEventListener("pointerdown",e=>{aim(e);
+  if(ED.mode==="cut"){const h=ray.intersectObjects(ED.wires.map(w=>w.m).filter(Boolean),false)[0];if(h){push();const w=h.object.userData.wire;ED.t.sc.remove(w.m);ED.wires=ED.wires.filter(x=>x!==w);rewire();upd()}return}
+  const n=hitNode();
+  if(ED.mode==="move"){sel(n);if(n){drag=n;moved=false;oc.enabled=false;rd.domElement.setPointerCapture(e.pointerId)}return}
+  if(!n)return;
+  if(!ED.pend){ED.pend=n;glow(n,0x6a4500)}
+  else if(ED.pend!==n){push();const a=ED.pend.id,b=n.id;(ED.mode==="pair"?["p","n"]:[ED.mode]).forEach(k=>ED.wires.push({a,b,k}));rewire();glow(ED.pend,0);ED.pend=null;upd()}});
+ rd.domElement.addEventListener("pointermove",e=>{if(!drag)return;aim(e);if(ray.ray.intersectPlane(pl,pt)){if(!moved){push();moved=true}
+  drag.x=Math.max(-16,Math.min(16,pt.x));drag.z=Math.max(-12,Math.min(12,pt.z));drag.mesh.position.x=drag.x;drag.mesh.position.z=drag.z;ED.wires.filter(w=>w.a===drag.id||w.b===drag.id).forEach(wmesh)}});
+ rd.domElement.addEventListener("pointerup",()=>{drag=null;oc.enabled=true});
+ new ResizeObserver(()=>{cam.aspect=W()/H();cam.updateProjectionMatrix();rd.setSize(W(),H())}).observe(el);
+ (function loop(){requestAnimationFrame(loop);if(!$("tool").classList.contains("on"))return;oc.update();rd.render(sc,cam)})();
+ ED.ready=true;ED.loading=false;seed()}
+$("edBar").onclick=e=>{const b=e.target.closest("button");if(!b||!ED.ready)return;
+ if(b.dataset.mode){ED.mode=b.dataset.mode;if(ED.pend){glow(ED.pend,0);ED.pend=null}document.querySelectorAll("#edBar [data-mode]").forEach(x=>x.classList.toggle("on",x===b))}
+ else if(b.id==="edUndo")undo();
+ else if(b.id==="edClear"){push();ED.wires.forEach(w=>w.m&&ED.t.sc.remove(w.m));ED.wires=[];upd()}};
+$("lib").onclick=e=>{const b=e.target.closest("[data-add]");if(!b||!ED.ready)return;push();mkNode(b.dataset.add,(ED.nodes.length%5-2)*2.8,6,++ED.id);upd()};
+document.addEventListener("keydown",e=>{if(!ED.ready||!$("tool").classList.contains("on")||/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName))return;
+ if(e.key==="Delete"&&ED.sel){push();rmNode(ED.sel);ED.sel=null;upd()}else if((e.ctrlKey||e.metaKey)&&e.key==="z"){e.preventDefault();undo()}});
+// render all
+function render(){E=elec();bomHTML();
+ $("sum").innerHTML=[["Array",S.kwp.toFixed(2),"kWp"],["Inverter",S.inv,"kW"],["DC to AC",(S.kwp/S.inv).toFixed(2),"ratio"],["Battery",S.bat,"kWh"],["AC breaker",E.aB,"A"],["Est. cost",php(S.cost),S.sim&&!S.manual?"":"rough"]].map(s=>`<div class="stat"><small>${s[0]}</small><b>${s[1]}</b> <span>${s[2]}</span></div>`).join("");
+ if(!ED.ready&&!ED.loading&&!ED.failed)$("stage").innerHTML=stage();syncEd();$("panelQty").value=S.panels;{const LP={pvb:"prot_pv_dc_breaker",acb:"prot_ac_breaker",bmc:"prot_battery_mccb",spdd:"prot_spd_dc",spda:"prot_spd_ac"};document.querySelectorAll("#lib [data-add]").forEach(b=>{const m=b.querySelector("small"),v=(S.U||UD)[LP[b.dataset.add]]??UD[LP[b.dataset.add]];if(m)m.textContent=php(v)})}
+ document.querySelectorAll("#wbTabs .btn").forEach((b,i)=>b.classList.toggle("on",i===wbi));$("wb").innerHTML=wbHTML();$("bom").innerHTML=bomHTML();
+ $("loads").innerHTML=S.loads.length?`<table><tr><th>Appliance</th><th>Watts</th><th>Hours</th><th>Qty</th><th></th></tr>${S.loads.map((l,i)=>`<tr><td>${l.n}</td>${["w","h","q"].map(k=>`<td><input type="number" min="0" value="${l[k]}" data-f="${i}.${k}" style="width:76px"></td>`).join("")}<td><button class="btn" data-d="${i}" aria-label="Remove ${l.n}">Remove</button></td></tr>`).join("")}</table>`:`<p style="color:var(--mu)">Nothing added yet. Pick an appliance above.</p>`;
+ $("rec").innerHTML=recHTML();drawSun();irr();roi();yld();plist()}
+$("bomBtn").onclick=render;document.querySelector("#tool details").addEventListener("input",render);calc();
+route();
+</script>
+</body>
+</html>
