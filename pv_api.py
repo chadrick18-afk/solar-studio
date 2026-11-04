@@ -135,11 +135,14 @@ class SimRequest(BaseModel):
     extra_materials_php: float = Field(0, ge=0, le=10_000_000, description="materials added in the wiring editor beyond the standard set")
     array_rows: Optional[int] = Field(None, ge=1, le=500, description="panel rows in the layout (for clamp counts)")
     faces: list[Face] = Field(default_factory=list, max_length=6, description="roof faces, each simulated with its own tilt/azimuth")
+    price_overrides: dict[str, float] = Field(default_factory=dict, description="unit price overrides keyed like UNIT_PRICES; unknown keys are ignored")
 
     @model_validator(mode="after")
     def need_consumption(self):
         if self.monthly_bill is None and self.monthly_kwh is None:
             raise ValueError("Provide monthly_kwh or monthly_bill")
+        if len(self.price_overrides) > 60:
+            raise ValueError("Too many price overrides")
         return self
 
 
@@ -377,7 +380,7 @@ def simulate(req: SimRequest):
     onsite = sum(r["direct"] + r["discharge"] for r in rows)
 
     # Itemized materials (BOM). Labor, engineering and permitting are kept OUT of the BOM.
-    U = UNIT_PRICES
+    U = {**UNIT_PRICES, **{k: float(v) for k, v in req.price_overrides.items() if k in UNIT_PRICES and 0 <= v <= 10_000_000}}
     cost_panels = kw * 1000 * U["panel_per_watt"]
     cost_inverter = inv_kw * U["inverter_per_kw"]
     cost_battery = bat * U["bat_kwh"]
@@ -427,7 +430,7 @@ def simulate(req: SimRequest):
         },
         "monthly": rows, "typical_day": day, "cash_flow": flows,
         "assumptions": {"monthly_kwh": round(monthly_kwh, 1), "retail_rate": retail, "export_rate": exp_rate,
-                        "yield_source": src, "notes": notes, "unit_prices": UNIT_PRICES},
+                        "yield_source": src, "notes": notes, "unit_prices": U},
     }
 
 
