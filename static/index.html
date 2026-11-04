@@ -35,6 +35,7 @@ h1{font-size:28px;margin:0 0 4px;letter-spacing:-.01em}h2{font-size:17px;margin:
 .stage svg{width:100%;height:100%}
 .lib button{display:flex;justify-content:space-between;width:100%;margin-bottom:6px;text-align:left}
 .lib small{color:var(--ac)}
+.lib .tabs button{width:auto;margin-bottom:0}
 label{display:block;color:var(--mu);font-size:13px;margin-bottom:3px}
 input,select{background:var(--bg);border:1px solid var(--ln);border-radius:8px;padding:7px 9px;width:100%}
 table{width:100%;border-collapse:collapse}th,td{padding:7px 8px;border-bottom:1px solid var(--ln);text-align:left}th{color:var(--mu);font-weight:500}
@@ -73,15 +74,11 @@ td.n,th.n{text-align:right}
  <div class="g g6" id="sum"></div>
  <div class="g main2" style="margin-top:12px">
   <div>
-   <div class="row" id="edBar" style="margin-bottom:8px"><button class="btn on" data-mode="move">Move</button><button class="btn" data-mode="p">+ Wire</button><button class="btn" data-mode="n">− Wire</button><button class="btn" data-mode="pair">+/− Pair</button><button class="btn" data-mode="g">Ground</button><button class="btn" data-mode="cut">Cut wire</button><span style="flex:1"></span><button class="btn" id="edUndo">Undo (0)</button><button class="btn" id="edClear">Clear wires</button></div>
+   <div class="row" id="edBar" style="margin-bottom:8px"><button class="btn on" data-mode="move">Move</button><button class="btn" data-mode="p">+ Wire</button><button class="btn" data-mode="n">− Wire</button><button class="btn" data-mode="pair">+/− Pair</button><button class="btn" data-mode="g">Ground</button><button class="btn" data-mode="cut">Cut wire</button><span style="flex:1"></span><button class="btn" id="edRot">Rotate</button><button class="btn" id="edDel">Delete</button><button class="btn" id="edUndo">Undo (0)</button><button class="btn" id="edClear">Clear wires</button></div>
    <div class="stage" id="stage"></div>
    <p class="todo" id="edInfo">Loading the 3D view…</p>
   </div>
-  <div class="box lib" id="lib"><h2>Hardware library</h2>
-   <div class="tabs"><button class="btn on">Breakers</button><button class="btn">Switches</button><button class="btn">Power</button></div>
-   <button class="btn" data-add="pvb">PV DC breaker<small>₱1,800</small></button><button class="btn" data-add="acb">AC breaker<small>₱900</small></button>
-   <button class="btn" data-add="bmc">Battery DC MCCB<small>₱4,500</small></button><button class="btn" data-add="spdd">DC surge protector<small>₱1,300</small></button>
-   <button class="btn" data-add="spda">AC surge protector<small>₱1,100</small></button></div>
+  <div class="box lib" id="lib"></div>
  </div>
  <div class="g g2" style="margin-top:12px">
   <div class="box"><h2>Step 1: Equipment</h2>
@@ -197,7 +194,7 @@ $("panelQty").oninput=e=>{S.panels=Math.max(1,+e.target.value||1);S.kwp=S.panels
 const WB=["Electrical","PV sizing","Mounting","Warnings"];let wbi=0;
 $("wbTabs").innerHTML=WB.map((t,i)=>`<button class="btn" data-w="${i}">${t}</button>`).join("");
 $("wbTabs").onclick=e=>{if(e.target.dataset.w!=null){wbi=+e.target.dataset.w;render()}};
-const UD={panel_per_watt:7.5,inverter_per_kw:8500,bat_kwh:8500,rail_4_2m:650,roof_hook:120,clamp:45,pv_cable_per_m:45,ac_cable_per_m:85,bat_cable_per_m:350,prot_pv_dc_breaker:1800,prot_ac_breaker:900,prot_spd_dc:1300,prot_spd_ac:1100,prot_battery_mccb:4500,prot_enclosure_misc:1400,conduit_fittings:2200,grounding_kit:1500,lugs_glands_ties:1000};
+const UD={panel_per_watt:7.5,inverter_per_kw:8500,bat_kwh:8500,rail_4_2m:650,roof_hook:120,clamp:45,pv_cable_per_m:45,ac_cable_per_m:85,bat_cable_per_m:350,prot_pv_dc_breaker:1800,prot_ac_breaker:900,prot_spd_dc:1300,prot_spd_ac:1100,prot_battery_mccb:4500,prot_enclosure_misc:1400,conduit_fittings:2200,grounding_kit:1500,lugs_glands_ties:1000,dc_isolator:1500,combiner_box:3200,kwh_meter:3500,dist_board:2800};
 function bomRows(){const U=S.U||UD,p=S.panels,w=S.watts,rows=Math.ceil(p/12),rails=Math.ceil(p*2.26/4.2),hooks=Math.ceil(p*1.5),R={pv:E.pvD,ac:E.acD,bat:E.batD};
  const L=[["Solar PV modules",p+" pcs",w*U.panel_per_watt,p*w*U.panel_per_watt],["Inverter",S.inv+" kW",U.inverter_per_kw,S.inv*U.inverter_per_kw]];
  if(S.bat>0)L.push(["Battery storage",S.bat+" kWh",U.bat_kwh,S.bat*U.bat_kwh]);
@@ -205,6 +202,7 @@ function bomRows(){const U=S.U||UD,p=S.panels,w=S.watts,rows=Math.ceil(p/12),rai
  const cnt=ty=>ED.ready?ED.nodes.filter(n=>n.type===ty).length:0;let ex=0;
  [[`PV DC breaker (${E.pvB} A)`,"prot_pv_dc_breaker","pvb"],[`AC breaker (${E.aB} A)`,"prot_ac_breaker","acb"],["DC surge protector","prot_spd_dc","spdd"],["AC surge protector","prot_spd_ac","spda"]].forEach(x=>{const n=Math.max(1,cnt(x[2]));ex+=(n-1)*U[x[1]];L.push([x[0],n+" pcs",U[x[1]],n*U[x[1]]])});
  const nm=cnt("bmc"),mp=U.prot_battery_mccb??UD.prot_battery_mccb;if(nm){ex+=nm*mp;L.push([`Battery DC MCCB${E.bB?" ("+E.bB+" A)":""}`,nm+" pcs",mp,nm*mp])}
+ [["DC isolator switch","dc_isolator","iso"],["PV combiner box","combiner_box","cmb"],["kWh meter","kwh_meter","mtr"],["Distribution board","dist_board","mdb"]].forEach(x=>{const n=cnt(x[2]);if(n){const pr=U[x[1]]??UD[x[1]];ex+=n*pr;L.push([x[0],n+" pcs",pr,n*pr])}});
  [["Enclosure and busbars","prot_enclosure_misc"],["Conduit and fittings","conduit_fittings"],["Grounding kit","grounding_kit"],["Lugs, glands, ties","lugs_glands_ties"]].forEach(x=>L.push([x[0],"1 lot",U[x[1]],U[x[1]]]));S.extras=Math.round(ex);
  L.push([`PV DC cable (${E.pvW.t})`,R.pv*2+" m",U.pv_cable_per_m,R.pv*2*U.pv_cable_per_m],[`AC cable (${E.aW.t})`,R.ac*3+" m",U.ac_cable_per_m,R.ac*3*U.ac_cable_per_m]);
  if(S.bat>0)L.push([`Battery cable (${E.bW.t})`,R.bat*2+" m",U.bat_cable_per_m,R.bat*2*U.bat_cable_per_m]);return L}
@@ -394,33 +392,129 @@ $("save").onclick=()=>{const n=$("pname").value.trim()||`${S.kwp} kWp system`;P.
 $("plist").onclick=e=>{const i=e.target.closest("[data-o]");if(i){Object.assign(S,P[+i.dataset.o]);location.hash="tool"}};
 function plist(){$("plist").innerHTML=P.length?P.map((p,i)=>`<button class="box card" data-o="${i}"><h2>${p.n}</h2><span style="color:var(--mu)">${p.kwp} kWp, ${p.inv} kW inverter, ${p.bat} kWh battery<br>Saved ${p.d}</span></button>`).join(""):`<p style="color:var(--mu)">No saved projects yet. Save the current design to see it here.</p>`}
 // 3D wiring editor (three.js, loaded on first visit to the Solar tool)
-const ED={ready:false,loading:false,failed:false,nodes:[],wires:[],mode:"move",sel:null,pend:null,hist:[],id:0,key:"",t:null};
-const TY={pv:["PV array",0x2a4a8a],inv:["Inverter",0xe8edf7,[1.6,2,.9]],bat:["Battery",0x3ecf8e,[1.3,1.5,.9]],pvb:["PV DC breaker",0xe5484d,[.8,1,.5]],acb:["AC breaker",0xf2a900,[.8,1,.5]],bmc:["Battery MCCB",0xb86bff,[.8,1,.5]],spdd:["DC surge protector",0x4ea1ff,[.7,.9,.5]],spda:["AC surge protector",0x4ea1ff,[.7,.9,.5]],home:["Home",0xdadfe9,[2.4,1.8,2.4]]};
+const ED={ready:false,loading:false,failed:false,nodes:[],wires:[],mode:"move",sel:null,pend:null,hist:[],id:0,key:"",t:null,place:null,ghost:null,pd:null,lt:"Breakers"};
 const WK={p:0xe5484d,n:0xd6dbe8,g:0x3ecf8e};
 const loadJs=src=>new Promise((ok,no)=>{const s=document.createElement("script");s.src=src;s.onload=ok;s.onerror=no;document.head.appendChild(s)});
-const pvSize=()=>[Math.min(S.panels,6)*1.15,.14,Math.ceil(S.panels/6)*1.95];
+// ---- part models ----
+const M=(c,o)=>new THREE.MeshStandardMaterial(Object.assign({color:c,roughness:.55,metalness:.15,emissive:0x000000},o||{}));
+const BM=(c,o)=>new THREE.MeshBasicMaterial(Object.assign({color:c},o||{}));
+const bx=(g,w,h,d,m,x,y,z)=>{const k=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);k.position.set(x,y,z);g.add(k);return k};
+const cyl=(g,r,h,m,x,y,z,fz)=>{const k=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,20),m);k.position.set(x,y,z);if(fz)k.rotation.x=Math.PI/2;g.add(k);return k};
+const mkTex=(w,h,fn)=>{const c=document.createElement("canvas");c.width=w;c.height=h;fn(c.getContext("2d"),w,h);const t=new THREE.CanvasTexture(c);t.anisotropy=4;return t};
+const txtTex=(w,h,lines,bg)=>mkTex(w,h,(c,W,H)=>{if(bg){c.fillStyle=bg;c.fillRect(0,0,W,H)}c.textAlign="center";c.textBaseline="middle";lines.forEach((l,i)=>{c.fillStyle=l[2]||"#111";c.font="bold "+l[1]+"px sans-serif";c.fillText(l[0],W/2,H*(i+1)/(lines.length+1))})});
+const decal=(g,w,h,t,x,y,z)=>{const k=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:t,transparent:true}));k.position.set(x,y,z);g.add(k);return k};
+let CELL=null;
+const cellTex=()=>CELL||(CELL=mkTex(120,200,(c,W,H)=>{c.fillStyle="#0d1f45";c.fillRect(0,0,W,H);const cw=W/6,ch=H/10;for(let i=0;i<6;i++)for(let j=0;j<10;j++){c.fillStyle="#1d4190";c.fillRect(i*cw+2,j*ch+2,cw-4,ch-4);c.fillStyle="rgba(190,205,235,.55)";c.fillRect(i*cw+cw/3,j*ch+2,1,ch-4);c.fillRect(i*cw+2*cw/3,j*ch+2,1,ch-4)}}));
+// solar array: framed modules with cell grid, tilted on a rail-and-leg rack
+function mPV(){const g=new THREE.Group(),n=S.panels,cols=Math.min(n,6),rows=Math.ceil(n/6),sx=1.15,sz=2.0,fr=M(0xc3c9d4,{metalness:.35,roughness:.4}),gl=M(0xffffff,{map:cellTex(),roughness:.25,metalness:.3}),lg=M(0x8a93a3,{metalness:.3}),fg=new THREE.BoxGeometry(1.1,.05,1.9),gg=new THREE.PlaneGeometry(1.0,1.8),W=cols*sx,tl=.22,yc=.75,hz=.95*Math.cos(tl),dy=.95*Math.sin(tl);
+ for(let i=0;i<n;i++){const c=i%6,r=Math.floor(i/6),p=new THREE.Group(),a=new THREE.Mesh(fg,fr),b=new THREE.Mesh(gg,gl);b.rotation.x=-Math.PI/2;b.position.y=.027;p.add(a);p.add(b);p.position.set((c-(cols-1)/2)*sx,yc,(r-(rows-1)/2)*sz);p.rotation.x=tl;g.add(p)}
+ for(let r=0;r<rows;r++){const z0=(r-(rows-1)/2)*sz;[[z0+hz,yc-dy],[z0-hz,yc+dy]].forEach(a=>{const z=a[0],y=a[1]-.04;bx(g,W,.05,.05,lg,0,y,z);[-W/2+.12,W/2-.12].concat(cols>3?[0]:[]).forEach(x=>bx(g,.05,y,.05,lg,x,y/2,z))})}
+ return{g,h:1.15}}
+// hybrid inverter: finned enclosure, LCD, status LEDs, buttons, cable glands
+function mInv(){const g=new THREE.Group(),body=M(0xe6eaf0,{roughness:.5,metalness:.2}),dk=M(0x1c2433,{roughness:.4}),fin=M(0xb9c0cc,{metalness:.35,roughness:.4}),gl=M(0x222831);
+ [-.55,.55].forEach(x=>bx(g,.16,.1,.3,dk,x,.05,0));
+ bx(g,1.5,1.9,.5,body,0,1.05,0);bx(g,1.38,1.74,.03,dk,0,1.05,.255);
+ for(let i=0;i<9;i++)[-1,1].forEach(s=>bx(g,.06,.03,.44,fin,s*.78,.4+i*.16,0));
+ decal(g,.9,.5,txtTex(180,100,[["HYBRID",28,"#3ecf8e"],["48 V",24,"#8fe6bf"]],"#08202a"),0,1.55,.275);
+ [[0x3ecf8e,-.3],[0xf2a900,0],[0x4ea1ff,.3]].forEach(a=>cyl(g,.04,.03,BM(a[0]),a[1],1.15,.275,1));
+ [-.45,-.15,.15,.45].forEach(x=>bx(g,.16,.1,.03,M(0x39465e),x,.85,.28));
+ for(let i=0;i<5;i++)cyl(g,.06,.18,gl,-.5+i*.25,.14,.12);
+ return{g,h:2.1}}
+// LiFePO4 battery module: steel case, printed label, SOC LEDs, terminals
+function mBat(){const g=new THREE.Group(),dk=M(0x242a33,{roughness:.5}),mt=M(0xb9c0cc,{metalness:.35,roughness:.4});
+ bx(g,1.3,1.45,.7,dk,0,.8,0);bx(g,1.36,.06,.76,mt,0,.08,0);bx(g,1.36,.06,.76,mt,0,1.52,0);
+ decal(g,1.1,.8,txtTex(220,160,[["LiFePO4",32,"#3ecf8e"],["51.2 V  200 Ah",24,"#e8edf7"],["10.24 kWh",22,"#9aa8c0"]],"#10151c"),0,1.0,.352);
+ for(let i=0;i<5;i++)bx(g,.12,.06,.02,BM(i<4?0x3ecf8e:0x2b3d34),-.28+i*.14,.55,.355);
+ cyl(g,.07,.14,M(0xd33a3a),-.4,.3,.4,1);cyl(g,.07,.14,M(0x15181d),.4,.3,.4,1);
+ return{g,h:1.6}}
+// breaker on a DIN-rail plate: housing, accent cap, toggle levers, tie bar, terminals, label
+function mBrk(o){const g=new THREE.Group(),s=o.s||1,pl=M(0xcdd3dd,{roughness:.6,metalness:.25}),dk=M(0x2b3039,{roughness:.45}),sv=M(0xc0c6d0,{metalness:.4,roughness:.35}),ac=M(o.c,{roughness:.45}),w=o.p*.34*s,bz=.065+.17*s,fz=bz+.17*s,y=.65;
+ [-1,1].forEach(k=>bx(g,.2,.08,.3,dk,k*(w/2+.1),.04,.1));
+ bx(g,w+.45,1.15,.05,pl,0,y,0);bx(g,w+.3,.08,.04,sv,0,y,.045);
+ bx(g,w,.62*s,.34*s,dk,0,y,bz);bx(g,w,.06*s,.35*s,ac,0,y+.28*s,bz);
+ for(let i=0;i<o.p;i++){const x=(i-(o.p-1)/2)*.34*s;
+  bx(g,.2*s,.3*s,.02,M(0x101318),x,y+.05*s,fz+.01);
+  bx(g,.14*s,.2*s,.1*s,ac,x,y+.1*s,fz+.05*s);
+  cyl(g,.05*s,.08,sv,x,y+.31*s+.04,bz);cyl(g,.05*s,.08,sv,x,y-.31*s-.04,bz)}
+ if(o.p>1)bx(g,w-.1*s,.05*s,.06*s,ac,0,y+.2*s,fz+.09*s);
+ decal(g,w*.9,.16*s,txtTex(160,40,[[o.t,22,"#111"]],"#eef1f5"),0,y-.2*s,fz+.012);
+ return{g,h:1.3}}
+// surge protector: base module with two plug-in cartridges and status windows
+function mSpd(o){const g=new THREE.Group(),pl=M(0xcdd3dd,{roughness:.6,metalness:.25}),dk=M(0x353b45,{roughness:.5}),sv=M(0xc0c6d0,{metalness:.4,roughness:.35}),ct=M(o.c,{roughness:.4});
+ [-1,1].forEach(k=>bx(g,.2,.08,.3,dk,k*.5,.04,.1));
+ bx(g,1.0,1.15,.05,pl,0,.65,0);bx(g,.9,.08,.04,sv,0,.65,.045);
+ bx(g,.62,.4,.3,dk,0,.45,.2);
+ [-.16,.16].forEach(x=>{bx(g,.26,.4,.26,ct,x,.85,.2);bx(g,.1,.07,.02,BM(0x3ecf8e),x,.88,.34);cyl(g,.04,.08,sv,x,.21,.2)});
+ decal(g,.55,.14,txtTex(160,40,[[o.t,22,"#fff"]],"#222"),0,.45,.352);
+ return{g,h:1.3}}
+// DC isolator: grey enclosure with rotary handle
+function mIso(){const g=new THREE.Group(),en=M(0xa9b2c0,{roughness:.5,metalness:.2}),dk=M(0x1c2433,{roughness:.4});
+ bx(g,.75,.85,.34,en,0,.5,0);bx(g,.65,.75,.02,M(0xc4cbd6),0,.5,.18);
+ cyl(g,.2,.04,M(0xe5484d),0,.58,.21,1);cyl(g,.12,.08,dk,0,.58,.25,1);bx(g,.4,.09,.08,M(0xf2a900),0,.58,.3);
+ decal(g,.6,.14,txtTex(160,36,[["DC ISOLATOR",20,"#111"]],"#eef1f5"),0,.3,.192);
+ [-.2,.2].forEach(x=>{cyl(g,.06,.14,dk,x,.07,0);cyl(g,.06,.12,dk,x,.97,0)});
+ return{g,h:1.1}}
+// PV combiner box: hinged door, latches, glands
+function mCmb(){const g=new THREE.Group(),dk=M(0x1c2433,{roughness:.4});
+ bx(g,1.0,1.2,.38,M(0xdde1e8,{roughness:.55}),0,.7,0);bx(g,.94,1.12,.03,M(0xe9ecf1),0,.7,.2);bx(g,.03,1.12,.05,dk,-.47,.7,.2);
+ [1.0,.4].forEach(y=>bx(g,.07,.15,.05,dk,.4,y,.23));
+ decal(g,.7,.16,txtTex(200,44,[["PV COMBINER",24,"#111"]],"#cfd6e2"),0,.9,.222);
+ [-.3,-.1,.1,.3].forEach(x=>cyl(g,.06,.14,dk,x,.07,0));[-.15,.15].forEach(x=>cyl(g,.06,.12,dk,x,1.34,0));
+ return{g,h:1.45}}
+// kWh meter: round glass dome with register, terminal cover
+function mMtr(){const g=new THREE.Group(),dk=M(0x3a414d,{roughness:.5});
+ [-.25,.25].forEach(x=>bx(g,.16,.075,.2,dk,x,.0375,0));
+ bx(g,.8,1.05,.22,M(0xdfe3ea,{roughness:.5}),0,.6,0);
+ cyl(g,.34,.1,M(0xf4f6f8,{roughness:.3}),0,.8,.16,1);
+ const f=new THREE.Mesh(new THREE.CircleGeometry(.3,32),new THREE.MeshBasicMaterial({map:txtTex(200,200,[["kWh",28,"#444"],["01234.5",34,"#111"],["230 V",22,"#666"]],"#f4f6f8")}));f.position.set(0,.8,.212);g.add(f);
+ bx(g,.7,.28,.14,dk,0,.32,.16);[-.2,0,.2].forEach(x=>cyl(g,.04,.03,M(0xc0c6d0,{metalness:.4}),x,.32,.24,1));
+ return{g,h:1.25}}
+// distribution board: two rows of breaker modules
+function mMdb(){const g=new THREE.Group(),dk=M(0x2f3640,{roughness:.5});
+ bx(g,1.15,1.3,.3,M(0xe3e7ee,{roughness:.55}),0,.75,0);bx(g,1.0,1.15,.04,M(0x20262f),0,.75,.17);
+ decal(g,.95,.1,txtTex(256,28,[["LOAD CENTER",20,"#cfd6e4"]]),0,1.27,.192);
+ [1.0,.62].forEach(y=>{for(let i=0;i<6;i++){const x=-.38+i*.152;bx(g,.13,.26,.12,dk,x,y,.22);bx(g,.06,.09,.06,M(i%3===0?0xe5484d:0xf2f4f7),x,y+.04,.29)}});
+ [-.3,0,.3].forEach(x=>cyl(g,.06,.14,dk,x,.07,0));[-.2,.2].forEach(x=>cyl(g,.06,.12,dk,x,1.46,0));
+ return{g,h:1.55}}
+// house: walls, hip roof, door, windows, meter box and service mast
+function mHome(){const g=new THREE.Group(),wl=M(0xeadfce,{roughness:.9,metalness:0}),gls=M(0x9fc7e8,{roughness:.2,metalness:.1}),fr=M(0xf6f3ee,{roughness:.8,metalness:0});
+ bx(g,2.6,1.3,2.6,wl,0,.65,0);
+ const rf=new THREE.Mesh(new THREE.ConeGeometry(2.04,1.0,4),M(0xb4553a,{roughness:.8,metalness:0}));rf.rotation.y=Math.PI/4;rf.position.y=1.8;g.add(rf);
+ bx(g,.5,.9,.04,M(0x6b4a2f,{roughness:.7,metalness:0}),-.5,.45,1.31);
+ bx(g,.62,.52,.03,fr,.5,.8,1.31);bx(g,.54,.44,.04,gls,.5,.8,1.315);
+ bx(g,.03,.52,.62,fr,1.31,.8,.3);bx(g,.04,.44,.54,gls,1.315,.8,.3);
+ bx(g,.3,.42,.12,M(0xcfd5df,{metalness:.2}),.95,.8,1.37);
+ cyl(g,.04,2.2,M(0x9aa3b2,{metalness:.4,roughness:.4}),.95,1.6,1.42);cyl(g,.07,.1,M(0x2b3039),.95,2.72,1.42);
+ return{g,h:2.8}}
+const TY={pv:["PV array"],inv:["Inverter"],bat:["Battery"],pvb:["PV DC breaker"],acb:["AC breaker"],bmc:["Battery MCCB"],spdd:["DC surge protector"],spda:["AC surge protector"],iso:["DC isolator"],cmb:["PV combiner box"],mtr:["kWh meter"],mdb:["Distribution board"],home:["Home"]};
+const BUILD={pv:mPV,inv:mInv,bat:mBat,home:mHome,iso:mIso,cmb:mCmb,mtr:mMtr,mdb:mMdb,
+ pvb:()=>mBrk({c:0xe5484d,p:2,s:1,t:"PV DC 2P"}),acb:()=>mBrk({c:0xf2a900,p:2,s:1,t:"AC 2P"}),bmc:()=>mBrk({c:0xb86bff,p:2,s:1.5,t:"BATT MCCB"}),
+ spdd:()=>mSpd({c:0x4ea1ff,t:"DC SPD"}),spda:()=>mSpd({c:0x2fb8a6,t:"AC SPD"})};
+// ---- end part models ----
+const LIB={Breakers:[["pvb","PV DC breaker","prot_pv_dc_breaker"],["acb","AC breaker","prot_ac_breaker"],["bmc","Battery DC MCCB","prot_battery_mccb"],["spdd","DC surge protector","prot_spd_dc"],["spda","AC surge protector","prot_spd_ac"]],Switches:[["iso","DC isolator switch","dc_isolator"],["cmb","PV combiner box","combiner_box"]],Power:[["mtr","kWh meter","kwh_meter"],["mdb","Distribution board","dist_board"]]};
+function drawLib(){const U=S.U||UD,t=ED.lt||"Breakers";
+ $("lib").innerHTML=`<h2>Hardware library</h2><div class="tabs">${Object.keys(LIB).map(k=>`<button class="btn${k===t?" on":""}" data-lt="${k}">${k}</button>`).join("")}</div>`+LIB[t].map(x=>`<button class="btn${ED.place===x[0]?" on":""}" data-add="${x[0]}">${x[1]}<small>${php(U[x[2]]??UD[x[2]])}</small></button>`).join("")+`<p class="todo" style="margin-top:8px">Pick a part, then click the floor of the 3D view to place it.</p>`}
 function lbl(txt,y){const c=document.createElement("canvas");c.width=256;c.height=64;const g=c.getContext("2d");g.fillStyle="#e8edf7";g.font="26px sans-serif";g.textAlign="center";g.fillText(txt,128,40);
- const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthTest:false}));sp.scale.set(2.6,.65,1);sp.position.y=y;return sp}
-function mkNode(type,x,z,id){const d=TY[type],s=type==="pv"?pvSize():d[2],m=new THREE.Mesh(new THREE.BoxGeometry(s[0],s[1],s[2]),new THREE.MeshStandardMaterial({color:d[1],roughness:.55,emissive:0x000000}));
- m.position.set(x,s[1]/2,z);
- if(type==="pv")m.add(new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry),new THREE.LineBasicMaterial({color:0x8fb4ff})));
- m.add(lbl(d[0],s[1]/2+.6));ED.t.sc.add(m);const n={id,type,x,z,mesh:m};ED.nodes.push(n);return n}
-const anchor=n=>new THREE.Vector3(n.x,n.mesh.geometry.parameters.height+.05,n.z);
+ const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthTest:false}));sp.scale.set(2.6,.65,1);sp.position.y=y;sp.raycast=()=>{};return sp}
+const disp=o=>o.traverse(c=>{if(c.geometry)c.geometry.dispose();if(c.material)[].concat(c.material).forEach(m=>m.dispose())});
+function dress(n,b){const g=b.g;g.position.set(n.x,0,n.z);g.rotation.y=n.r*Math.PI/2;g.add(lbl(TY[n.type][0],b.h+.6));g.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true}});ED.t.sc.add(g);n.mesh=g;n.h=b.h}
+function mkNode(type,x,z,id,r){const n={id,type,x,z,r:r||0};dress(n,BUILD[type]());ED.nodes.push(n);return n}
+const anchor=n=>new THREE.Vector3(n.x,n.h+.05,n.z);
 function wmesh(w){const a=ED.nodes.find(n=>n.id===w.a),b=ED.nodes.find(n=>n.id===w.b);if(!a||!b)return;
  const k=ED.wires.filter(x=>x.a===w.a&&x.b===w.b||x.a===w.b&&x.b===w.a).indexOf(w),A=anchor(a),B=anchor(b),h=Math.max(A.y,B.y)+1.1+k*.3;A.x+=k*.1;B.x+=k*.1;
  const P=[A,new THREE.Vector3(A.x,h,A.z),new THREE.Vector3(B.x,h,B.z),B],cp=new THREE.CurvePath();for(let i=0;i<3;i++)cp.add(new THREE.LineCurve3(P[i],P[i+1]));
  if(w.m){ED.t.sc.remove(w.m);w.m.geometry.dispose()}
  const m=new THREE.Mesh(new THREE.TubeGeometry(cp,24,.05,5,false),new THREE.MeshStandardMaterial({color:WK[w.k],emissive:WK[w.k],emissiveIntensity:.25}));m.userData.wire=w;ED.t.sc.add(m);w.m=m}
 const rewire=()=>ED.wires.forEach(wmesh);
-const glow=(n,c)=>{if(n)n.mesh.material.emissive.setHex(c)};
+const glow=(n,c)=>{if(n)n.mesh.traverse(o=>{if(o.isMesh)[].concat(o.material).forEach(m=>{if(m.emissive)m.emissive.setHex(c)})})};
 function sel(n){if(ED.sel&&ED.sel!==(ED.pend&&ED.pend.id))glow(ED.nodes.find(x=>x.id===ED.sel),0);ED.sel=n?n.id:null;glow(n,0x2a2a2a)}
-function snap(){return JSON.stringify({n:ED.nodes.map(n=>({id:n.id,t:n.type,x:n.x,z:n.z})),w:ED.wires.map(w=>({a:w.a,b:w.b,k:w.k}))})}
+function snap(){return JSON.stringify({n:ED.nodes.map(n=>({id:n.id,t:n.type,x:n.x,z:n.z,r:n.r})),w:ED.wires.map(w=>({a:w.a,b:w.b,k:w.k}))})}
 function push(){ED.hist.push(snap());if(ED.hist.length>50)ED.hist.shift();upd()}
-function clearScene(){ED.nodes.forEach(n=>ED.t.sc.remove(n.mesh));ED.wires.forEach(w=>w.m&&ED.t.sc.remove(w.m));ED.nodes=[];ED.wires=[];ED.sel=ED.pend=null}
-function loadSnap(s){clearScene();const o=JSON.parse(s);o.n.forEach(n=>mkNode(n.t,n.x,n.z,n.id));o.w.forEach(w=>ED.wires.push({a:w.a,b:w.b,k:w.k}));rewire();upd()}
+function clearScene(){ED.nodes.forEach(n=>{ED.t.sc.remove(n.mesh);disp(n.mesh)});ED.wires.forEach(w=>{if(w.m){ED.t.sc.remove(w.m);w.m.geometry.dispose()}});ED.nodes=[];ED.wires=[];ED.sel=ED.pend=null}
+function loadSnap(s){clearScene();const o=JSON.parse(s);o.n.forEach(n=>mkNode(n.t,n.x,n.z,n.id,n.r));o.w.forEach(w=>ED.wires.push({a:w.a,b:w.b,k:w.k}));rewire();upd()}
 function undo(){if(!ED.ready)return;const s=ED.hist.pop();if(s)loadSnap(s)}
-function rmNode(id){const n=ED.nodes.find(x=>x.id===id);if(!n)return;ED.t.sc.remove(n.mesh);ED.nodes=ED.nodes.filter(x=>x!==n);ED.wires=ED.wires.filter(w=>{if(w.a===id||w.b===id){w.m&&ED.t.sc.remove(w.m);return false}return true});rewire()}
-function seed(){clearScene();const N=(ty,x,z)=>mkNode(ty,x,z,++ED.id).id,pv=N("pv",-7,0),pb=N("pvb",-3.5,-3),iv=N("inv",0,-3),ab=N("acb",3.5,-3),hm=N("home",7,0),bt=S.bat>0?N("bat",0,3):0,pr=(a,b)=>ED.wires.push({a,b,k:"p"},{a,b,k:"n"});
+function rmNode(id){const n=ED.nodes.find(x=>x.id===id);if(!n)return;ED.t.sc.remove(n.mesh);disp(n.mesh);ED.nodes=ED.nodes.filter(x=>x!==n);ED.wires=ED.wires.filter(w=>{if(w.a===id||w.b===id){w.m&&ED.t.sc.remove(w.m);return false}return true});rewire()}
+function seed(){clearScene();const N=(ty,x,z)=>mkNode(ty,x,z,++ED.id).id,pv=N("pv",-9,0),pb=N("pvb",-3.5,-3),iv=N("inv",0,-3),ab=N("acb",3.5,-3),hm=N("home",8,0),bt=S.bat>0?N("bat",0,3):0,pr=(a,b)=>ED.wires.push({a,b,k:"p"},{a,b,k:"n"});
  pr(pv,pb);pr(pb,iv);pr(iv,ab);pr(ab,hm);if(bt)pr(bt,iv);ED.wires.push({a:iv,b:hm,k:"g"});rewire();ED.hist=[];ED.key=S.panels+"|"+(S.bat>0);upd()}
 function conn(a,b){const seen=new Set([a]),q=[a];while(q.length){const c=q.pop();for(const w of ED.wires){const o=w.a===c?w.b:w.b===c?w.a:null;if(o&&!seen.has(o)){seen.add(o);q.push(o)}}}return seen.has(b)}
 function edWarn(){if(!ED.ready)return[];const f=ty=>ED.nodes.find(n=>n.type===ty),pv=f("pv"),iv=f("inv"),bt=f("bat"),hm=f("home"),o=[];
@@ -428,49 +522,63 @@ function edWarn(){if(!ED.ready)return[];const f=ty=>ED.nodes.find(n=>n.type===ty
  if(bt&&iv&&!conn(bt.id,iv.id))o.push("The battery is not wired to the inverter.");
  if(iv&&hm&&!conn(iv.id,hm.id))o.push("The inverter is not wired to the home.");
  if(!ED.wires.some(w=>w.k==="g"))o.push("No ground conductor is drawn.");return o}
-function upd(){$("edInfo").textContent=`${ED.nodes.length} parts, ${ED.wires.length} wires. Drag parts to move them. In a wire mode, click two parts to connect them. Delete removes the selected part.`;$("edUndo").textContent="Undo ("+ED.hist.length+")"; if(E&&!ED.inR){ED.inR=true;try{render()}finally{ED.inR=false}}}
+function upd(){$("edInfo").textContent=ED.place?`Placing ${TY[ED.place][0]}: click the floor to drop it. Esc cancels.`:`${ED.nodes.length} parts, ${ED.wires.length} wires. Drag a part to move it, drag empty space to orbit. In a wire mode, click two parts to connect them. Pick a part from the library to add it.`;$("edUndo").textContent="Undo ("+ED.hist.length+")";if(E&&!ED.inR){ED.inR=true;try{render()}finally{ED.inR=false}}}
 function syncEd(){if(!ED.ready)return;const key=S.panels+"|"+(S.bat>0);if(key===ED.key)return;ED.key=key;
- const pv=ED.nodes.find(n=>n.type==="pv");if(pv){const s=pvSize();pv.mesh.geometry.dispose();pv.mesh.geometry=new THREE.BoxGeometry(s[0],s[1],s[2]);pv.mesh.position.y=s[1]/2;const e=pv.mesh.children.find(c=>c.isLineSegments);if(e){e.geometry.dispose();e.geometry=new THREE.EdgesGeometry(pv.mesh.geometry)}}
+ const pv=ED.nodes.find(n=>n.type==="pv");if(pv){ED.t.sc.remove(pv.mesh);disp(pv.mesh);dress(pv,mPV())}
  const bt=ED.nodes.find(n=>n.type==="bat"),iv=ED.nodes.find(n=>n.type==="inv");
  if(S.bat>0&&!bt&&iv){const b=mkNode("bat",iv.x,iv.z+6,++ED.id);ED.wires.push({a:b.id,b:iv.id,k:"p"},{a:b.id,b:iv.id,k:"n"})}
  if(!(S.bat>0)&&bt)rmNode(bt.id);
  rewire();upd()}
+function cancelPlace(){if(ED.ghost){ED.t.sc.remove(ED.ghost);disp(ED.ghost);ED.ghost=null}if(ED.place){ED.place=null;upd()}}
+function startPlace(type){if(!ED.ready)return;if(ED.place===type){cancelPlace();return}cancelPlace();if(ED.pend){glow(ED.pend,0);ED.pend=null}
+ ED.place=type;const g=BUILD[type]().g;g.traverse(o=>{if(o.isMesh)[].concat(o.material).forEach(m=>{m.transparent=true;m.opacity=.55})});g.visible=false;ED.t.sc.add(g);ED.ghost=g;upd()}
+function placeAt(x,z){const t=ED.place;if(!t)return;push();const n=mkNode(t,Math.max(-16,Math.min(16,x)),Math.max(-12,Math.min(12,z)),++ED.id);cancelPlace();sel(n);upd()}
 async function initEditor(){if(ED.ready||ED.loading||ED.failed)return;ED.loading=true;
  try{await loadJs("https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js");await loadJs("https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js")}
  catch(e){ED.loading=false;ED.failed=true;$("stage").innerHTML=stage();$("edInfo").textContent="The 3D view needs internet access to load three.js. Showing the static diagram instead.";return}
  const el=$("stage"),W=()=>el.clientWidth||600,H=()=>el.clientHeight||430;el.innerHTML="";
- const sc=new THREE.Scene();sc.background=new THREE.Color(0x0a0f1a);const cam=new THREE.PerspectiveCamera(45,W()/H(),.1,200);cam.position.set(0,13,17);
- const rd=new THREE.WebGLRenderer({antialias:true});rd.setPixelRatio(Math.min(devicePixelRatio||1,2));rd.setSize(W(),H());el.appendChild(rd.domElement);
+ const sc=new THREE.Scene();sc.background=new THREE.Color(0x0a0f1a);const cam=new THREE.PerspectiveCamera(45,W()/H(),.1,200);cam.position.set(0,13,19);
+ const rd=new THREE.WebGLRenderer({antialias:true});rd.setPixelRatio(Math.min(devicePixelRatio||1,2));rd.setSize(W(),H());rd.shadowMap.enabled=true;rd.shadowMap.type=THREE.PCFSoftShadowMap;rd.domElement.style.touchAction="none";el.appendChild(rd.domElement);
  const oc=new THREE.OrbitControls(cam,rd.domElement);oc.maxPolarAngle=Math.PI/2.05;
- sc.add(new THREE.AmbientLight(0xffffff,.75));const dl=new THREE.DirectionalLight(0xffffff,.8);dl.position.set(6,12,8);sc.add(dl);sc.add(new THREE.GridHelper(40,40,0x27344d,0x18233a));
+ sc.add(new THREE.AmbientLight(0xffffff,.55));sc.add(new THREE.HemisphereLight(0xbcd0ff,0x1a2238,.55));
+ const dl=new THREE.DirectionalLight(0xffffff,.85);dl.position.set(8,16,10);dl.castShadow=true;dl.shadow.mapSize.set(2048,2048);Object.assign(dl.shadow.camera,{left:-24,right:24,top:24,bottom:-24,near:1,far:60});dl.shadow.bias=-.0005;sc.add(dl);
+ const gr=new THREE.Mesh(new THREE.PlaneGeometry(90,90),new THREE.MeshStandardMaterial({color:0x101828,roughness:1,metalness:0}));gr.rotation.x=-Math.PI/2;gr.receiveShadow=true;sc.add(gr);
+ const gh=new THREE.GridHelper(40,40,0x2a3a5a,0x18233a);gh.position.y=.01;sc.add(gh);
  ED.t={sc,cam,rd,oc};
  const ray=new THREE.Raycaster(),pl=new THREE.Plane(new THREE.Vector3(0,1,0),0),ndc=new THREE.Vector2(),pt=new THREE.Vector3();let drag=null,moved=false;
  const aim=e=>{const r=rd.domElement.getBoundingClientRect();ndc.set((e.clientX-r.left)/r.width*2-1,-((e.clientY-r.top)/r.height)*2+1);ray.setFromCamera(ndc,cam)};
- const hitNode=()=>{const h=ray.intersectObjects(ED.nodes.map(n=>n.mesh),false)[0];return h?ED.nodes.find(n=>n.mesh===h.object):null};
+ const hitNode=()=>{const h=ray.intersectObjects(ED.nodes.map(n=>n.mesh),true)[0];if(!h)return null;let o=h.object;while(o&&!ED.nodes.some(n=>n.mesh===o))o=o.parent;return o?ED.nodes.find(n=>n.mesh===o):null};
  rd.domElement.addEventListener("pointerdown",e=>{aim(e);
+  if(ED.place){ED.pd=[e.clientX,e.clientY];return}
   if(ED.mode==="cut"){const h=ray.intersectObjects(ED.wires.map(w=>w.m).filter(Boolean),false)[0];if(h){push();const w=h.object.userData.wire;ED.t.sc.remove(w.m);ED.wires=ED.wires.filter(x=>x!==w);rewire();upd()}return}
   const n=hitNode();
   if(ED.mode==="move"){sel(n);if(n){drag=n;moved=false;oc.enabled=false;rd.domElement.setPointerCapture(e.pointerId)}return}
   if(!n)return;
   if(!ED.pend){ED.pend=n;glow(n,0x6a4500)}
   else if(ED.pend!==n){push();const a=ED.pend.id,b=n.id;(ED.mode==="pair"?["p","n"]:[ED.mode]).forEach(k=>ED.wires.push({a,b,k}));rewire();glow(ED.pend,0);ED.pend=null;upd()}});
- rd.domElement.addEventListener("pointermove",e=>{if(!drag)return;aim(e);if(ray.ray.intersectPlane(pl,pt)){if(!moved){push();moved=true}
+ rd.domElement.addEventListener("pointermove",e=>{
+  if(ED.place&&ED.ghost){aim(e);if(ray.ray.intersectPlane(pl,pt)){ED.ghost.visible=true;ED.ghost.position.set(Math.max(-16,Math.min(16,pt.x)),0,Math.max(-12,Math.min(12,pt.z)))}return}
+  if(!drag)return;aim(e);if(ray.ray.intersectPlane(pl,pt)){if(!moved){push();moved=true}
   drag.x=Math.max(-16,Math.min(16,pt.x));drag.z=Math.max(-12,Math.min(12,pt.z));drag.mesh.position.x=drag.x;drag.mesh.position.z=drag.z;ED.wires.filter(w=>w.a===drag.id||w.b===drag.id).forEach(wmesh)}});
- rd.domElement.addEventListener("pointerup",()=>{drag=null;oc.enabled=true});
+ rd.domElement.addEventListener("pointerup",e=>{
+  if(ED.place&&ED.pd){const tap=Math.hypot(e.clientX-ED.pd[0],e.clientY-ED.pd[1])<6;ED.pd=null;if(tap){aim(e);if(ray.ray.intersectPlane(pl,pt))placeAt(pt.x,pt.z)}}
+  drag=null;oc.enabled=true});
  new ResizeObserver(()=>{cam.aspect=W()/H();cam.updateProjectionMatrix();rd.setSize(W(),H())}).observe(el);
  (function loop(){requestAnimationFrame(loop);if(!$("tool").classList.contains("on"))return;oc.update();rd.render(sc,cam)})();
  ED.ready=true;ED.loading=false;seed()}
 $("edBar").onclick=e=>{const b=e.target.closest("button");if(!b||!ED.ready)return;
- if(b.dataset.mode){ED.mode=b.dataset.mode;if(ED.pend){glow(ED.pend,0);ED.pend=null}document.querySelectorAll("#edBar [data-mode]").forEach(x=>x.classList.toggle("on",x===b))}
+ if(b.dataset.mode){cancelPlace();ED.mode=b.dataset.mode;if(ED.pend){glow(ED.pend,0);ED.pend=null}document.querySelectorAll("#edBar [data-mode]").forEach(x=>x.classList.toggle("on",x===b))}
  else if(b.id==="edUndo")undo();
- else if(b.id==="edClear"){push();ED.wires.forEach(w=>w.m&&ED.t.sc.remove(w.m));ED.wires=[];upd()}};
-$("lib").onclick=e=>{const b=e.target.closest("[data-add]");if(!b||!ED.ready)return;push();mkNode(b.dataset.add,(ED.nodes.length%5-2)*2.8,6,++ED.id);upd()};
+ else if(b.id==="edClear"){push();ED.wires.forEach(w=>w.m&&ED.t.sc.remove(w.m));ED.wires=[];upd()}
+ else if(b.id==="edRot"){const n=ED.nodes.find(x=>x.id===ED.sel);if(n){push();n.r=(n.r+1)%4;n.mesh.rotation.y=n.r*Math.PI/2;upd()}}
+ else if(b.id==="edDel"){if(ED.sel){push();rmNode(ED.sel);ED.sel=null;upd()}}};
+$("lib").onclick=e=>{const t=e.target.closest("[data-lt]");if(t){ED.lt=t.dataset.lt;drawLib();return}const b=e.target.closest("[data-add]");if(b)startPlace(b.dataset.add)};
 document.addEventListener("keydown",e=>{if(!ED.ready||!$("tool").classList.contains("on")||/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName))return;
- if(e.key==="Delete"&&ED.sel){push();rmNode(ED.sel);ED.sel=null;upd()}else if((e.ctrlKey||e.metaKey)&&e.key==="z"){e.preventDefault();undo()}});
+ if(e.key==="Escape")cancelPlace();else if(e.key==="Delete"&&ED.sel){push();rmNode(ED.sel);ED.sel=null;upd()}else if((e.ctrlKey||e.metaKey)&&e.key==="z"){e.preventDefault();undo()}});
 // render all
 function render(){E=elec();bomHTML();
  $("sum").innerHTML=[["Array",S.kwp.toFixed(2),"kWp"],["Inverter",S.inv,"kW"],["DC to AC",(S.kwp/S.inv).toFixed(2),"ratio"],["Battery",S.bat,"kWh"],["AC breaker",E.aB,"A"],["Est. cost",php(S.cost),S.sim&&!S.manual?"":"rough"]].map(s=>`<div class="stat"><small>${s[0]}</small><b>${s[1]}</b> <span>${s[2]}</span></div>`).join("");
- if(!ED.ready&&!ED.loading&&!ED.failed)$("stage").innerHTML=stage();syncEd();$("panelQty").value=S.panels;{const LP={pvb:"prot_pv_dc_breaker",acb:"prot_ac_breaker",bmc:"prot_battery_mccb",spdd:"prot_spd_dc",spda:"prot_spd_ac"};document.querySelectorAll("#lib [data-add]").forEach(b=>{const m=b.querySelector("small"),v=(S.U||UD)[LP[b.dataset.add]]??UD[LP[b.dataset.add]];if(m)m.textContent=php(v)})}
+ if(!ED.ready&&!ED.loading&&!ED.failed)$("stage").innerHTML=stage();syncEd();$("panelQty").value=S.panels;drawLib();
  document.querySelectorAll("#wbTabs .btn").forEach((b,i)=>b.classList.toggle("on",i===wbi));$("wb").innerHTML=wbHTML();$("bom").innerHTML=bomHTML();
  $("loads").innerHTML=S.loads.length?`<table><tr><th>Appliance</th><th>Watts</th><th>Hours</th><th>Qty</th><th></th></tr>${S.loads.map((l,i)=>`<tr><td>${l.n}</td>${["w","h","q"].map(k=>`<td><input type="number" min="0" value="${l[k]}" data-f="${i}.${k}" style="width:76px"></td>`).join("")}<td><button class="btn" data-d="${i}" aria-label="Remove ${l.n}">Remove</button></td></tr>`).join("")}</table>`:`<p style="color:var(--mu)">Nothing added yet. Pick an appliance above.</p>`;
  $("rec").innerHTML=recHTML();drawSun();irr();roi();yld();plist()}
