@@ -36,6 +36,14 @@ h1{font-size:28px;margin:0 0 4px;letter-spacing:-.01em}h2{font-size:17px;margin:
 .lib button{display:flex;justify-content:space-between;width:100%;margin-bottom:6px;text-align:left}
 .lib small{color:var(--ac)}
 .lib .tabs button{width:auto;margin-bottom:0}
+input[type=range]{padding:0;accent-color:var(--ac)}
+[hidden]{display:none!important}
+#r3d{position:relative;height:480px;border:1px solid var(--ln);border-radius:var(--r);overflow:hidden;background:#0a0f1a}
+#r3c{position:absolute;inset:0}#r3c canvas{display:block}
+.o3{position:absolute;z-index:2;background:#0c121ecc;border:1px solid var(--ln);border-radius:10px;padding:6px 8px;font-size:13px}
+.o3.tl{left:10px;top:10px;max-width:min(300px,55%)}.o3.tr{right:10px;top:10px;display:flex;gap:6px}.o3.bc{left:10px;right:10px;bottom:10px}
+.o3.mid{left:50%;top:45%;transform:translate(-50%,-50%);text-align:center;max-width:80%}
+.pin{width:110px;text-align:right;padding:4px 6px}.pin.ed{border-color:var(--ac);color:var(--ac)}
 label{display:block;color:var(--mu);font-size:13px;margin-bottom:3px}
 input,select{background:var(--bg);border:1px solid var(--ln);border-radius:8px;padding:7px 9px;width:100%}
 table{width:100%;border-collapse:collapse}th,td{padding:7px 8px;border-bottom:1px solid var(--ln);text-align:left}th{color:var(--mu);font-weight:500}
@@ -66,6 +74,7 @@ td.n,th.n{text-align:right}
  <h1>Solar tool</h1><p class="sub">Sizing summary, wiring diagram, and materials list for the current design.</p>
  <div class="box" style="margin-bottom:12px"><div class="g g5">
   <div><label>Setup</label><select id="topo"><option value="hybrid-no-export">Hybrid, no export</option><option value="hybrid-export">Hybrid, export</option><option value="grid-tied">Grid-tied</option><option value="off-grid">Off-grid</option></select></div>
+  <div id="xpWrap"><label>Surplus solar goes to</label><select id="xprio"><option value="battery_first">Battery first, then grid</option><option value="export_first">Grid first (battery idle)</option></select></div>
   <div><label>Monthly use (kWh)</label><input type="number" id="mkwh" value="400" min="1"></div>
   <div><label>Latitude</label><input type="number" id="lat" value="14.5995" step="any"></div>
   <div><label>Longitude</label><input type="number" id="lon" value="120.9842" step="any"></div>
@@ -82,16 +91,21 @@ td.n,th.n{text-align:right}
  </div>
  <div class="g g2" style="margin-top:12px">
   <div class="box"><h2>Step 1: Equipment</h2>
-   <div class="g g2"><div><label>Inverter</label><select><option>Hybrid 6 kW, 48 V</option><option>Grid-tied 5 kW</option></select></div>
-   <div><label>PV module</label><select><option>500 W mono</option><option>450 W mono</option></select></div>
-   <div><label>Battery module</label><select><option>51.2 V 200 Ah LiFePO4</option><option>None</option></select></div>
-   <div><label>Panels</label><input type="number" id="panelQty" value="15" min="1"></div></div>
+   <div class="g g2"><div><label>Inverter</label><select id="invSel"></select></div>
+   <div><label>PV module</label><select id="modSel"></select></div>
+   <div><label>Battery module</label><select id="batSel"></select></div>
+   <div><label>Battery quantity</label><input type="number" id="batQty" value="1" min="1" max="20"></div>
+   <div><label>Panels</label><input type="number" id="panelQty" value="15" min="1"></div>
+   <div style="align-self:end"><span id="panelLbl" style="color:var(--mu)"></span></div></div>
+   <input type="range" id="panelSlider" style="margin-top:10px" aria-label="Panel count">
+   <div class="row" style="margin-top:6px"><button class="btn" id="pMin"></button><button class="btn" id="pRec"></button><button class="btn" id="pMax"></button></div>
+   <p id="pickInfo" style="color:var(--mu);font-size:13px;margin:10px 0 0"></p>
    <details style="margin-top:12px"><summary style="cursor:pointer;color:var(--ac)">Module and site settings</summary><div class="g g3" style="margin-top:10px"><div><label>Module Isc (A)</label><input type="number" id="iSc" value="13.8" step="any"></div><div><label>Module Vmp (V)</label><input type="number" id="vmp" value="41.5" step="any"></div><div><label>Module Voc (V)</label><input type="number" id="voc" value="49.5" step="any"></div><div><label>Inverter max DC (V)</label><input type="number" id="maxDcV" value="500" step="any"></div><div><label>MPPT minimum (V)</label><input type="number" id="mpptMin" value="120" step="any"></div><div><label>MPPT inputs</label><input type="number" id="mppts" value="2" step="any"></div><div><label>Max current per MPPT (A)</label><input type="number" id="maxPvA" value="25" step="any"></div><div><label>Array to inverter (m)</label><input type="number" id="pvD" value="25" step="any"></div><div><label>Battery to inverter (m)</label><input type="number" id="batD" value="3" step="any"></div><div><label>Inverter to panel (m)</label><input type="number" id="acD" value="8" step="any"></div><div><label>Voltage drop (%)</label><input type="number" id="drop" value="2" step="any"></div><div><label>Lowest temperature (°C)</label><input type="number" id="lowT" value="15" step="any"></div><div><label>Roof temperature (°C)</label><input type="number" id="roofT" value="45" step="any"></div><div><label>Indoor temperature (°C)</label><input type="number" id="inT" value="35" step="any"></div><div><label>Building</label><select id="bldg"><option value="dwelling">Dwelling (600 V)</option><option value="other">Other (1000 V)</option></select></div></div></details></div>
   <div class="box"><h2>Step 2: Calculations</h2>
    <div class="tabs" id="wbTabs"></div><div id="wb"></div></div>
  </div>
- <div class="box" style="margin-top:12px"><div class="row"><h2 style="margin:0;flex:1">Bill of materials</h2><button class="btn" id="bomBtn">Refresh</button></div><div id="bom"></div>
-  <p class="todo">Materials only. Labor, engineering and permitting fees are excluded. Port the itemized BOM from your current <code>index.html</code> here and make unit prices editable.</p></div>
+ <div class="box" style="margin-top:12px"><div class="row"><h2 style="margin:0;flex:1">Bill of materials</h2><button class="btn" id="bomReset">Reset prices</button><button class="btn" id="bomBtn">Refresh</button></div><div id="bom"></div>
+  <p class="todo">Materials only. Labor, engineering and permitting fees are excluded. Unit prices are editable: change a price and press Enter. Edited prices turn yellow and are sent to the simulation.</p></div>
 </section>
 
 <section id="load">
@@ -108,11 +122,18 @@ td.n,th.n{text-align:right}
 
 <section id="roof">
  <h1>Roof mapper</h1><p class="sub">Find the site, outline the roof on the satellite view, and see how many panels fit and where the sun will be.</p>
- <div class="row" style="margin-bottom:8px"><input id="rq" placeholder="Search city, barangay or address" style="flex:1;min-width:200px"><button class="btn" id="rgo">Find</button></div>
- <div class="row" style="margin-bottom:10px"><button class="btn" data-reg="14.5995,120.9842">Manila</button><button class="btn" data-reg="13.7565,121.0583">Batangas</button><button class="btn" data-reg="10.3157,123.8854">Cebu</button><button class="btn" data-reg="7.1907,125.4553">Davao</button><button class="btn" data-reg="10.7202,122.5621">Iloilo</button><button class="btn" data-reg="16.4023,120.596">Baguio</button></div>
+ <div class="row" style="margin-bottom:8px"><button class="btn on" data-view="2d">2D map</button><button class="btn" data-view="3d">3D roof &amp; sun</button></div>
+ <div class="row" id="rqrow" style="margin-bottom:8px"><input id="rq" placeholder="Search city, barangay or address" style="flex:1;min-width:200px"><button class="btn" id="rgo">Find</button></div>
+ <div class="row" id="rregrow" style="margin-bottom:10px"><button class="btn" data-reg="14.5995,120.9842">Manila</button><button class="btn" data-reg="13.7565,121.0583">Batangas</button><button class="btn" data-reg="10.3157,123.8854">Cebu</button><button class="btn" data-reg="7.1907,125.4553">Davao</button><button class="btn" data-reg="10.7202,122.5621">Iloilo</button><button class="btn" data-reg="16.4023,120.596">Baguio</button></div>
  <div class="g roofg">
-  <div><div class="row" style="margin-bottom:8px"><button class="btn" id="rDraw">Draw roof</button><button class="btn" id="rFin">Finish outline</button><button class="btn" id="rClr">Clear</button><button class="btn" id="rDel">Remove face</button><span id="rMsg" style="color:var(--mu)"></span><span style="flex:1"></span><button class="btn on" data-base="sat">Satellite</button><button class="btn" data-base="street">Street</button></div>
-   <div id="rmap">Loading the map…</div></div>
+  <div><div class="row" id="rbar" style="margin-bottom:8px"><button class="btn" id="rDraw">Draw roof</button><button class="btn" id="rFin">Finish outline</button><button class="btn" id="rClr">Clear</button><button class="btn" id="rDel">Remove face</button><span id="rMsg" style="color:var(--mu)"></span><span style="flex:1"></span><button class="btn on" data-base="sat">Satellite</button><button class="btn" data-base="street">Street</button></div>
+   <div id="rmap">Loading the map…</div>
+   <div id="r3d" hidden><div id="r3c"></div>
+    <div class="o3 tl"><b id="r3tag"></b><br><span id="r3hint" style="color:var(--mu)">Drag to orbit, scroll to zoom, right-drag to pan. Click a face to select it.</span></div>
+    <div class="o3 tr"><button class="btn on" data-m3="orbit">Move</button><button class="btn" data-m3="tilt">Tilt &amp; Pitch</button></div>
+    <div class="o3 mid" id="r3msg" hidden></div>
+    <div class="o3 bc"><div class="row"><span>Sun: <b id="s3t">12:00 PM</b></span><span class="row" id="s3chips" style="gap:4px"></span><input type="range" id="s3h" min="5" max="19" step="0.5" value="12" style="flex:1;min-width:120px" aria-label="Sun time"><select id="s3d" style="width:auto" aria-label="Date"></select></div><div id="s3txt" style="color:var(--mu);margin-top:4px"></div></div>
+   </div></div>
   <div class="box"><h2>Roof faces</h2><div class="row" id="faces" style="margin-bottom:10px"></div><div id="rstats"></div><p id="rfit" style="margin:8px 0 0"></p>
    <div class="g g2" style="margin-top:12px">
     <div><label>Panel length (m)</label><input type="number" id="rL" value="2.278" step="0.001"></div>
@@ -120,7 +141,8 @@ td.n,th.n{text-align:right}
     <div><label>Layout</label><select id="rOri"><option value="auto">Best fit</option><option value="landscape">Landscape</option><option value="portrait">Portrait</option></select></div>
     <div><label>Edge setback (m)</label><input type="number" id="rSb" value="0.5" step="0.1" min="0"></div>
     <div><label>Roof tilt (°)</label><input type="number" id="rTilt" value="15" min="0" max="90"></div>
-    <div><label>Direction (°, 180 = south)</label><input type="number" id="rAz" value="180" min="0" max="360"></div></div>
+    <div><label>Direction (°, 180 = south)</label><input type="number" id="rAz" value="180" min="0" max="360"></div>
+    <div><label>Wall height (m, 3D view)</label><input type="number" id="rH" value="3" min="0" step="0.5"></div></div>
    <div class="row" style="margin-top:12px"><button class="btn pri" id="rSend">Use in solar tool</button></div><p id="rNote" style="color:var(--mu);margin:8px 0 0;font-size:13px"></p></div>
  </div>
  <div class="box" style="margin-top:12px"><h2>Sun path</h2>
@@ -169,7 +191,7 @@ td.n,th.n{text-align:right}
 <script>
 const $=id=>document.getElementById(id),php=n=>"₱"+Math.round(n).toLocaleString("en-US");
 const TABS=[["home","Home"],["tool","Solar tool"],["load","Load calculator"],["roof","Roof mapper"],["roi","ROI simulator"],["yield","Yield monitor"],["projects","Projects"],["contact","Contact"]];
-const S={loads:[],kwp:7.5,inv:6,bat:9.6,panels:15,watts:500,cost:260000};
+const S={sel:{mod:"gen500",inv:"auto",bat:"auto",qty:1},UE:{},loads:[],kwp:7.5,inv:6,bat:9.6,panels:15,watts:500,cost:260000};
 const PRE=[["Inverter AC 1 HP",750,8,1],["Refrigerator",150,24,1],["Ceiling fan",65,10,2],["LED lights",60,6,1],["Laptop and monitor",120,8,1],["Wi-Fi router",12,24,1],["TV 55 in",100,5,1],["Water pump",750,1,1]];
 // nav + routing
 $("nav").insertAdjacentHTML("beforeend",TABS.map(t=>`<a href="#${t[0]}" data-t="${t[0]}">${t[1]}</a>`).join(""));
@@ -189,23 +211,24 @@ function calc(){R.kwh=S.loads.reduce((a,l)=>a+l.w*l.h*l.q,0)/1000;R.peak=S.loads
  R.inv=Math.max(1,Math.ceil(R.peak*1.25));R.pv=R.kwh/(4.3*.75);R.bat=R.kwh*.4/.8}
 function recHTML(){return S.loads.length?`<table><tr><td>Daily use</td><td class="n"><b>${R.kwh.toFixed(2)} kWh</b></td></tr><tr><td>Peak load</td><td class="n">${R.peak.toFixed(2)} kW</td></tr><tr><td>Inverter</td><td class="n"><b>${R.inv} kW</b></td></tr><tr><td>Solar array</td><td class="n"><b>${R.pv.toFixed(2)} kWp</b></td></tr><tr><td>Battery</td><td class="n"><b>${R.bat.toFixed(1)} kWh</b></td></tr></table>`:`<p style="color:var(--mu)">Add an appliance to see the recommended system.</p>`}
 $("xfer").onclick=()=>{if(!S.loads.length)return;$("mkwh").value=Math.max(1,Math.round(R.kwh*30));location.hash="tool";runSim()};
-$("panelQty").oninput=e=>{S.panels=Math.max(1,+e.target.value||1);S.kwp=S.panels*S.watts/1000;S.manual=true;$("simMsg").textContent="Panel count changed. Run the simulation to update cost and savings.";render()};
+$("panelQty").oninput=e=>setPanels(+e.target.value||1);
 // tool
 const WB=["Electrical","PV sizing","Mounting","Warnings"];let wbi=0;
 $("wbTabs").innerHTML=WB.map((t,i)=>`<button class="btn" data-w="${i}">${t}</button>`).join("");
 $("wbTabs").onclick=e=>{if(e.target.dataset.w!=null){wbi=+e.target.dataset.w;render()}};
 const UD={panel_per_watt:7.5,inverter_per_kw:8500,bat_kwh:8500,rail_4_2m:650,roof_hook:120,clamp:45,pv_cable_per_m:45,ac_cable_per_m:85,bat_cable_per_m:350,prot_pv_dc_breaker:1800,prot_ac_breaker:900,prot_spd_dc:1300,prot_spd_ac:1100,prot_battery_mccb:4500,prot_enclosure_misc:1400,conduit_fittings:2200,grounding_kit:1500,lugs_glands_ties:1000,dc_isolator:1500,combiner_box:3200,kwh_meter:3500,dist_board:2800};
-function bomRows(){const U=S.U||UD,p=S.panels,w=S.watts,rows=Math.ceil(p/12),rails=Math.ceil(p*2.26/4.2),hooks=Math.ceil(p*1.5),R={pv:E.pvD,ac:E.acD,bat:E.batD};
- const L=[["Solar PV modules",p+" pcs",w*U.panel_per_watt,p*w*U.panel_per_watt],["Inverter",S.inv+" kW",U.inverter_per_kw,S.inv*U.inverter_per_kw]];
- if(S.bat>0)L.push(["Battery storage",S.bat+" kWh",U.bat_kwh,S.bat*U.bat_kwh]);
- [["Mounting rails",rails,U.rail_4_2m],["Roof hooks",hooks,U.roof_hook],["Mid clamps",Math.max(0,p-rows)*2,U.clamp],["End clamps",rows*4,U.clamp]].forEach(x=>L.push([x[0],x[1]+" pcs",x[2],x[1]*x[2]]));
+function bomRows(){const U=PRICE(),p=S.panels,w=S.watts,rows=Math.ceil(p/12),rails=Math.ceil(p*2.26/4.2),hooks=Math.ceil(p*1.5),R={pv:E.pvD,ac:E.acD,bat:E.batD};
+ const L=[["Solar PV modules",p+" pcs",w*U.panel_per_watt,p*w*U.panel_per_watt,"panel_per_watt",w],["Inverter",S.inv+" kW",U.inverter_per_kw,S.inv*U.inverter_per_kw,"inverter_per_kw",1]];
+ if(S.bat>0)L.push(["Battery storage",S.bat+" kWh",U.bat_kwh,S.bat*U.bat_kwh,"bat_kwh",1]);
+ [["Mounting rails",rails,"rail_4_2m"],["Roof hooks",hooks,"roof_hook"],["Mid clamps",Math.max(0,p-rows)*2,"clamp"],["End clamps",rows*4,"clamp"]].forEach(x=>L.push([x[0],x[1]+" pcs",U[x[2]],x[1]*U[x[2]],x[2],1]));
  const cnt=ty=>ED.ready?ED.nodes.filter(n=>n.type===ty).length:0;let ex=0;
- [[`PV DC breaker (${E.pvB} A)`,"prot_pv_dc_breaker","pvb"],[`AC breaker (${E.aB} A)`,"prot_ac_breaker","acb"],["DC surge protector","prot_spd_dc","spdd"],["AC surge protector","prot_spd_ac","spda"]].forEach(x=>{const n=Math.max(1,cnt(x[2]));ex+=(n-1)*U[x[1]];L.push([x[0],n+" pcs",U[x[1]],n*U[x[1]]])});
- const nm=cnt("bmc"),mp=U.prot_battery_mccb??UD.prot_battery_mccb;if(nm){ex+=nm*mp;L.push([`Battery DC MCCB${E.bB?" ("+E.bB+" A)":""}`,nm+" pcs",mp,nm*mp])}
- [["DC isolator switch","dc_isolator","iso"],["PV combiner box","combiner_box","cmb"],["kWh meter","kwh_meter","mtr"],["Distribution board","dist_board","mdb"]].forEach(x=>{const n=cnt(x[2]);if(n){const pr=U[x[1]]??UD[x[1]];ex+=n*pr;L.push([x[0],n+" pcs",pr,n*pr])}});
- [["Enclosure and busbars","prot_enclosure_misc"],["Conduit and fittings","conduit_fittings"],["Grounding kit","grounding_kit"],["Lugs, glands, ties","lugs_glands_ties"]].forEach(x=>L.push([x[0],"1 lot",U[x[1]],U[x[1]]]));S.extras=Math.round(ex);
- L.push([`PV DC cable (${E.pvW.t})`,R.pv*2+" m",U.pv_cable_per_m,R.pv*2*U.pv_cable_per_m],[`AC cable (${E.aW.t})`,R.ac*3+" m",U.ac_cable_per_m,R.ac*3*U.ac_cable_per_m]);
- if(S.bat>0)L.push([`Battery cable (${E.bW.t})`,R.bat*2+" m",U.bat_cable_per_m,R.bat*2*U.bat_cable_per_m]);return L}
+ [[`PV DC breaker (${E.pvB} A)`,"prot_pv_dc_breaker","pvb"],[`AC breaker (${E.aB} A)`,"prot_ac_breaker","acb"],["DC surge protector","prot_spd_dc","spdd"],["AC surge protector","prot_spd_ac","spda"]].forEach(x=>{const n=Math.max(1,cnt(x[2]));ex+=(n-1)*U[x[1]];L.push([x[0],n+" pcs",U[x[1]],n*U[x[1]],x[1],1])});
+ const nm=cnt("bmc"),mp=U.prot_battery_mccb;if(nm){ex+=nm*mp;L.push([`Battery DC MCCB${E.bB?" ("+E.bB+" A)":""}`,nm+" pcs",mp,nm*mp,"prot_battery_mccb",1])}
+ [["DC isolator switch","dc_isolator","iso"],["PV combiner box","combiner_box","cmb"],["kWh meter","kwh_meter","mtr"],["Distribution board","dist_board","mdb"]].forEach(x=>{const n=cnt(x[2]);if(n){const pr=U[x[1]];ex+=n*pr;L.push([x[0],n+" pcs",pr,n*pr,x[1],1])}});
+ [["Enclosure and busbars","prot_enclosure_misc"],["Conduit and fittings","conduit_fittings"],["Grounding kit","grounding_kit"],["Lugs, glands, ties","lugs_glands_ties"]].forEach(x=>L.push([x[0],"1 lot",U[x[1]],U[x[1]],x[1],1]));S.extras=Math.round(ex);
+ L.push([`PV DC cable (${E.pvW.t})`,R.pv*2+" m",U.pv_cable_per_m,R.pv*2*U.pv_cable_per_m,"pv_cable_per_m",1],[`AC cable (${E.aW.t})`,R.ac*3+" m",U.ac_cable_per_m,R.ac*3*U.ac_cable_per_m,"ac_cable_per_m",1]);
+ if(S.bat>0)L.push([`Battery cable (${E.bW.t})`,R.bat*2+" m",U.bat_cable_per_m,R.bat*2*U.bat_cable_per_m,"bat_cable_per_m",1]);return L}
+
 // electrical design (ported from the first tool)
 const WIRES=[[2.5,"14 AWG",20,25],[4,"12 AWG",25,30],[6,"10 AWG",35,40],[10,"8 AWG",50,55],[16,"6 AWG",65,75],[25,"4 AWG",85,95],[35,"2 AWG",115,130],[50,"1/0 AWG",150,170],[70,"2/0 AWG",175,195],[95,"3/0 AWG",200,225],[120,"4/0 AWG",230,260]];
 const CON=[[15,15.8,"½ in (15 mm)"],[20,21,"¾ in (20 mm)"],[25,26.6,"1 in (25 mm)"],[32,35,"1¼ in (32 mm)"],[40,40.9,"1½ in (40 mm)"],[50,52.5,"2 in (50 mm)"],[65,62.7,"2½ in (65 mm)"],[80,77.9,"3 in (80 mm)"]];
@@ -242,9 +265,12 @@ function stage(){const c="#8e9bb5";return`<svg viewBox="0 0 720 330"><g stroke-w
  ${[["Panels",60,"#2a4a8a"],["DC breaker",250,"#e8edf7"],["Inverter",380,"#e8edf7"],["AC breaker",515,"#e8edf7"],["Home",630,"#e8edf7"]].map(b=>`<rect x="${b[1]-40}" y="120" width="80" height="70" rx="8" fill="${b[2]}" opacity=".9"/><text x="${b[1]}" y="212" fill="${c}" font-size="13" text-anchor="middle">${b[0]}</text>`).join("")}
  <rect x="210" y="235" width="80" height="50" rx="8" fill="#e8edf7" opacity=".9"/><text x="250" y="302" fill="${c}" font-size="13" text-anchor="middle">Battery</text></svg>`}
 function bomHTML(){const r=bomRows(),t=r.reduce((a,x)=>a+x[3],0);S.cost=S.sim&&!S.manual?S.sim.summary.total_cost_php+(S.extras-(S.sentExtras||0)):t*1.15;
- return`<table><tr><th>Item</th><th>Qty</th><th class="n">Unit price</th><th class="n">Cost</th></tr>${r.map(x=>`<tr><td>${x[0]}</td><td>${x[1]}</td><td class="n">${php(x[2])}</td><td class="n">${php(x[3])}</td></tr>`).join("")}<tr><td colspan="3"><b>Materials subtotal</b></td><td class="n"><b>${php(t)}</b></td></tr></table>`+(S.extras>0?`<p style="color:var(--mu);margin:8px 0 0">Includes ${php(S.extras)} for extra parts added in the wiring editor.</p>`:"")+(S.sim?`<p style="color:var(--mu);margin:8px 0 0">Not in this list: labor, engineering and permitting, and the net-metering fee (about ${php(S.sim.summary.services_php)}). They are included in the estimated cost above.</p>`:"")}
+ const cell=x=>`<td class="n"><input type="number" class="pin${x[4] in S.UE?" ed":""}" min="0" step="any" data-pk="${x[4]}" data-pf="${x[5]}" value="${Math.round(x[2]*100)/100}" aria-label="Unit price for ${x[0]}"></td>`;
+ return`<table><tr><th>Item</th><th>Qty</th><th class="n">Unit price</th><th class="n">Cost</th></tr>${r.map(x=>`<tr><td>${x[0]}</td><td>${x[1]}</td>${cell(x)}<td class="n">${php(x[3])}</td></tr>`).join("")}<tr><td colspan="3"><b>Materials subtotal</b></td><td class="n"><b>${php(t)}</b></td></tr></table>`+(S.extras>0?`<p style="color:var(--mu);margin:8px 0 0">Includes ${php(S.extras)} for extra parts added in the wiring editor.</p>`:"")+(S.sim?`<p style="color:var(--mu);margin:8px 0 0">Not in this list: labor, engineering and permitting, and the net-metering fee (about ${php(S.sim.summary.services_php)}). They are included in the estimated cost above.</p>`:"")}
+
 // roof mapper
-const mkFace=()=>({pts:[],closed:false,tilt:15,az:180,fit:null}),RM={map:null,faces:[mkFace()],cur:0,drawing:false,g:null,ready:false,loading:false,failed:false},cf=()=>RM.faces[RM.cur];
+const mkFace=()=>({pts:[],closed:false,tilt:15,az:180,fit:null}),RM={map:null,faces:[mkFace()],cur:0,drawing:false,view:"2d",g:null,ready:false,loading:false,failed:false},cf=()=>RM.faces[RM.cur];
+const R3={ready:false,loading:false,failed:false,mode:"orbit",faceMeshes:[],framed:false};
 const COMP=["North","North-east","East","South-east","South","South-west","West","North-west"],fname=(f,i)=>"Face "+(i+1)+(f.closed?" ("+COMP[Math.round(f.az/45)%8]+")":"");
 const KM=111320,gv=(id,d)=>{const v=parseFloat($(id).value);return Number.isFinite(v)&&v>0?v:d};
 const toXY=(P,la,lo)=>P.map(p=>[(p[1]-lo)*KM*Math.cos(la*Math.PI/180),(p[0]-la)*KM]);
@@ -278,7 +304,7 @@ function rdraw(){RM.faces.forEach(f=>f.fit=rfitFace(f));
   if(f.closed&&P.length>2){const pg=L.polygon(P,{color:col,weight:2,fillOpacity:.08}).addTo(RM.g);pg.bindTooltip(fname(f,i),{permanent:true,direction:"center"})}else L.polyline(P,{color:col,weight:2}).addTo(RM.g);
   if(on)P.forEach(p=>L.circleMarker(p,{radius:4,color:col,fillOpacity:1}).addTo(RM.g));
   if(f.fit){const g=f.fit.g,c=Math.cos(g.ang),s=Math.sin(g.ang);g.out.forEach(([x,y])=>{const q=[[x,y],[x+g.pw,y],[x+g.pw,y+g.ph],[x,y+g.ph]].map(p=>fromXY([p[0]*c-p[1]*s,p[0]*s+p[1]*c],f.fit.la,f.fit.lo));L.polygon(q,{color:"#9ec1ff",weight:1,fillColor:on?"#2a4a8a":"#3a4560",fillOpacity:.75,interactive:false}).addTo(RM.g)})}})}
- S.roofMax=roofTotal();rchips();rstats();if(E)render()}
+ S.roofMax=roofTotal();rchips();rstats();r3faces();if(E)render()}
 function useFace(i){RM.cur=i;RM.drawing=false;$("rTilt").value=cf().tilt;$("rAz").value=cf().az;$("rMsg").textContent="";rdraw();drawSun()}
 async function initMap(){if(RM.ready){RM.map.invalidateSize();return}if(RM.loading||RM.failed)return;RM.loading=true;
  try{const l=document.createElement("link");l.rel="stylesheet";l.href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css";document.head.appendChild(l);await loadJs("https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js")}
@@ -299,8 +325,8 @@ $("rFin").onclick=()=>{const f=cf();if(f.pts.length<3){$("rMsg").textContent="Ad
 $("rClr").onclick=()=>{const f=cf();f.pts=[];f.closed=false;RM.drawing=false;$("rMsg").textContent="";rdraw()};
 $("rDel").onclick=()=>{if(RM.faces.length>1){RM.faces.splice(RM.cur,1);useFace(Math.max(0,RM.cur-1))}else $("rClr").click()};
 ["rL","rW","rOri","rSb"].forEach(i=>$(i).addEventListener("input",()=>{rdraw();drawSun()}));
-$("rTilt").addEventListener("input",()=>{cf().tilt=parseFloat($("rTilt").value)||0;rstats();drawSun()});
-$("rAz").addEventListener("input",()=>{cf().az=parseFloat($("rAz").value)||0;rchips();drawSun()});
+$("rTilt").addEventListener("input",()=>{cf().tilt=parseFloat($("rTilt").value)||0;rstats();r3faces();drawSun()});
+$("rAz").addEventListener("input",()=>{cf().az=parseFloat($("rAz").value)||0;rchips();r3faces();drawSun()});
 function sendSite(){const cl=RM.faces.filter(f=>f.fit),dom=cl.reduce((b,x)=>!b||x.fit.n>b.fit.n?x:b,null);
  if(cl.length){$("lat").value=(cl.reduce((a,f)=>a+f.fit.la,0)/cl.length).toFixed(5);$("lon").value=(cl.reduce((a,f)=>a+f.fit.lo,0)/cl.length).toFixed(5);S.tilt=dom.tilt;S.az=dom.az;S.faces=cl.map(f=>({name:fname(f,RM.faces.indexOf(f)),tilt:f.tilt,azimuth:f.az,max_panels:f.fit.n}))}
  else{if(RM.ready){$("lat").value=RM.map.getCenter().lat.toFixed(5);$("lon").value=RM.map.getCenter().lng.toFixed(5)}S.tilt=cf().tilt;S.az=cf().az;S.faces=[]}
@@ -308,14 +334,14 @@ function sendSite(){const cl=RM.faces.filter(f=>f.fit),dom=cl.reduce((b,x)=>!b||
 $("rSend").onclick=()=>{sendSite();location.hash="tool";runSim()};
 rdraw();
 function sunPos(lat,doy,h){const d=23.44*Math.sin(2*Math.PI*(284+doy)/365)*Math.PI/180,la=lat*Math.PI/180,H=(h-12)*15*Math.PI/180,al=Math.asin(Math.sin(la)*Math.sin(d)+Math.cos(la)*Math.cos(d)*Math.cos(H)),A=Math.atan2(Math.sin(H),Math.cos(H)*Math.sin(la)-Math.tan(d)*Math.cos(la));return{alt:al*180/Math.PI,az:(A*180/Math.PI+180+360)%360}}
-function drawSun(){const lat=parseFloat($("lat").value)||14.6,doy=+$("sunD").value,h=+$("sun").value,tl=(parseFloat($("rTilt").value)||0)*Math.PI/180,az=parseFloat($("rAz").value)||180,cx=160,cy=160,Rr=135;
+function drawSun(){const lat=siteLat(),doy=+$("sunD").value,h=+$("sun").value,tl=(parseFloat($("rTilt").value)||0)*Math.PI/180,az=parseFloat($("rAz").value)||180,cx=160,cy=160,Rr=135;
  const xy=(a,al)=>{const r=Rr*(1-Math.max(al,0)/90),q=a*Math.PI/180;return[cx+r*Math.sin(q),cy-r*Math.cos(q)]};
  let d="";for(let k=4;k<=20;k+=.25){const s=sunPos(lat,doy,k);if(s.alt>0){const p=xy(s.az,s.alt);d+=(d?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)}}
  const s=sunPos(lat,doy,h),p=xy(s.az,s.alt),a=xy(az,45),sl=s.alt>0?Math.max(0,Math.sin(s.alt*Math.PI/180)*Math.cos(tl)+Math.cos(s.alt*Math.PI/180)*Math.sin(tl)*Math.cos((s.az-az)*Math.PI/180)):0;
  $("sunH").textContent=Math.floor(h)+":"+(h%1?"30":"00");
  $("sunSvg").innerHTML=[0,30,60].map(al=>`<circle cx="${cx}" cy="${cy}" r="${Rr*(1-al/90)}" fill="none" stroke="#27344d"/>`).join("")+`<path d="M${cx} ${cy-Rr}V${cy+Rr}M${cx-Rr} ${cy}H${cx+Rr}" stroke="#27344d"/>`+[["N",cx,16],["S",cx,314],["E",312,cy+4],["W",8,cy+4]].map(l=>`<text x="${l[1]}" y="${l[2]}" fill="#8e9bb5" font-size="13" text-anchor="middle">${l[0]}</text>`).join("")+`<path d="${d}" fill="none" stroke="#f2a900" stroke-width="2"/><line x1="${cx}" y1="${cy}" x2="${a[0]}" y2="${a[1]}" stroke="#4ea1ff" stroke-width="3"/>`+(s.alt>0?`<circle cx="${p[0]}" cy="${p[1]}" r="8" fill="#f2a900"/>`:"");
  const dir=["N","NE","E","SE","S","SW","W","NW"][Math.round(s.az/45)%8];
- $("sunInfo").innerHTML=s.alt>0?`Sun is ${s.alt.toFixed(0)}° above the horizon, toward ${dir} (${s.az.toFixed(0)}°).<br>Light reaching the panels: <b>${Math.round(sl*100)}%</b> of full strength.<br><span style="color:var(--mu)">The blue line shows the direction the roof faces.</span>`:`The sun is below the horizon at this hour.`}
+ $("sunInfo").innerHTML=s.alt>0?`Sun is ${s.alt.toFixed(0)}° above the horizon, toward ${dir} (${s.az.toFixed(0)}°).<br>Light reaching the panels: <b>${Math.round(sl*100)}%</b> of full strength.<br><span style="color:var(--mu)">The blue line shows the direction the roof faces.</span>`:`The sun is below the horizon at this hour.`;r3sun()}
 $("sunD").onchange=drawSun;$("sun").oninput=drawSun;
 // 12-month solar profile
 const DM=[31,28,31,30,31,30,31,31,30,31,30,31];
@@ -333,21 +359,25 @@ function irr(){const d=S.sim,svg=$("irr");
  $("irrNote").className=fb?"bad":"";$("irrNote").style.color=fb?"":"var(--mu)";
  $("irrNote").textContent=fb?"PVGIS was unavailable, so this is a flat estimate and not real site data.":`Estimated from the simulated solar output${c?(s.faces&&s.faces.length>1?` at ${c.lat.toFixed(2)}°, ${c.lon.toFixed(2)}° (${s.faces.length} roof faces)`:` at ${c.lat.toFixed(2)}°, ${c.lon.toFixed(2)}° (tilt ${c.tilt}°, facing ${c.az}°)`):""}, using ${d.assumptions.yield_source}. Heat losses make these slightly lower than raw sunlight. Faded bars are below the average.`}
 $("irrRun").onclick=async()=>{sendSite();$("irrMsg").textContent="Running the simulation for this site…";await runSim();$("irrMsg").textContent=$("simMsg").textContent};
+// show export priority only for hybrid-export
+function xpShow(){$("xpWrap").style.display=$("topo").value==="hybrid-export"?"":"none"}
+$("topo").addEventListener("change",xpShow);xpShow();
 // simulation
 function applySim(d){const s=d.summary;S.sim=d;S.U=d.assumptions.unit_prices;S.manual=false;Object.assign(S,{kwp:s.system_kw,inv:s.inverter_kw,bat:s.battery_kwh,panels:s.panel_count,watts:s.panel_watts,cost:s.total_cost_php})}
-async function runSim(retry){const m=$("simMsg"),b={topology:$("topo").value,monthly_kwh:+$("mkwh").value,lat:+$("lat").value,lon:+$("lon").value,panel_watts:S.watts,tilt:S.tilt==null?15:S.tilt,azimuth:S.az==null?180:S.az,extra_materials_php:Math.round(S.extras||0),pv_run_m:E.pvD,ac_run_m:E.acD,bat_run_m:E.batD,tariff_escalation_pct:+$("esc").value,degradation_pct:+$("deg").value};
+async function runSim(retry){const m=$("simMsg"),b={topology:$("topo").value,monthly_kwh:+$("mkwh").value,lat:+$("lat").value,lon:+$("lon").value,panel_watts:S.watts,tilt:S.tilt==null?15:S.tilt,azimuth:S.az==null?180:S.az,extra_materials_php:Math.round(S.extras||0),pv_run_m:E.pvD,ac_run_m:E.acD,bat_run_m:E.batD,tariff_escalation_pct:+$("esc").value,degradation_pct:+$("deg").value,export_priority:$("topo").value==="hybrid-export"?$("xprio").value:"battery_first"};
  if($("tariff").value!=="")b.retail_rate=+$("tariff").value;if(S.manual)b.system_kw=S.panels*S.watts/1000;if(S.faces&&S.faces.length)b.faces=S.faces;
+ {const iv=byId(CAT.inv,S.sel.inv),bt=byId(CAT.bat,S.sel.bat);if(iv)b.inverter_kw=iv.kw;if(S.sel.bat==="none")b.battery_kwh=0;else if(bt)b.battery_kwh=+(bt.kwh*S.sel.qty).toFixed(2);const po=sendPO();if(Object.keys(po).length)b.price_overrides=po}
  m.textContent="Running simulation…";let r,d;
  try{r=await fetch("/api/simulate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});d=await r.json()}
- catch(e){m.textContent="Cannot reach the server. Run uvicorn pv_api:app, then open this page at http://localhost:8000/app.html.";return}
+ catch(e){m.textContent="Cannot reach the server. Run uvicorn pv_api:app, then open this page at http://localhost:8000/.";return}
  if(!r.ok){m.textContent="Request failed ("+r.status+"): "+(typeof d.detail==="string"?d.detail:JSON.stringify(d.detail));return}
- applySim(d);S.sentExtras=b.extra_materials_php;S.simCtx={lat:b.lat,lon:b.lon,tilt:b.tilt,az:b.azimuth};E=elec();
+ applySim(d);S.sentExtras=b.extra_materials_php;S.sentKey=JSON.stringify([b.extra_materials_php,ovr(),S.sel]);S.simCtx={lat:b.lat,lon:b.lon,tilt:b.tilt,az:b.azimuth};E=elec();
  if(!retry&&E.panels!==S.panels){S.panels=E.panels;S.manual=true;await runSim(true);m.textContent="Panel count set to "+E.panels+" so every string is full. "+m.textContent;return}
  m.textContent="Simulation complete. Yield data: "+d.assumptions.yield_source+".";render()}
 $("runBtn").onclick=()=>runSim();$("recalc").onclick=()=>runSim();$("ymon").onchange=()=>yld();
 function roi(){const d=S.sim;if(!d){$("roiOut").innerHTML=`<p style="color:var(--mu)">Run a simulation to see savings and payback.</p><button class="btn pri" data-go="tool">Open the solar tool</button>`;$("cf").innerHTML="";return}
  const s=d.summary,f=d.cash_flow,mx=Math.max(...f.map(x=>Math.abs(x.cumulative_php)),1),Y=v=>110-v/mx*90;
- const stale=(S.extras||0)!==(S.sentExtras||0)?`<p class="bad" style="margin:8px 0 0">Parts in the wiring editor changed the materials cost. Run the simulation again to update payback.</p>`:"";
+ const stale=curKey()!==S.sentKey?`<p class="bad" style="margin:8px 0 0">Equipment, prices or wiring parts changed. Run the simulation again to update payback.</p>`:"";
  $("roiOut").innerHTML=stale+`<table><tr><td>Estimated cost</td><td class="n">${php(s.total_cost_php)}</td></tr><tr><td>Year 1 savings</td><td class="n"><b>${php(s.year1_savings_php)}</b></td></tr><tr><td>Payback</td><td class="n"><b>${s.payback_years==null?"over "+f.length+" years":s.payback_years+" years"}</b></td></tr><tr><td>Net gain over ${f.length} years</td><td class="n">${php(s.net_gain_over_horizon_php)}</td></tr><tr><td>Solar coverage</td><td class="n">${s.solar_coverage_pct}%</td></tr></table>`;
  $("cf").innerHTML=`<path d="M0 110H720" stroke="#27344d"/><path d="${f.map((x,i)=>(i?"L":"M")+(20+i*28)+" "+Y(x.cumulative_php)).join("")}" fill="none" stroke="#f2a900" stroke-width="3"/>`+f.filter(x=>x.year%5==0).map(x=>`<text x="${20+(x.year-1)*28}" y="214" fill="#8e9bb5" font-size="11" text-anchor="middle">Year ${x.year}</text>`).join("")}
 // yield monitor: live energy flow
@@ -389,8 +419,8 @@ $("yh").oninput=yld;
 $("yPlay").onclick=()=>{if(YP){stopPlay();return}$("yPlay").textContent="Pause";YP=setInterval(()=>{$("yh").value=(+$("yh").value+1)%24;yld()},700)};
 // projects (in memory, plus localStorage when available)
 let P=[];try{P=JSON.parse(localStorage.getItem("ss_projects")||"[]")}catch(e){}
-$("save").onclick=()=>{const n=$("pname").value.trim()||`${S.kwp} kWp system`;P.unshift({n,kwp:S.kwp,inv:S.inv,bat:S.bat,panels:S.panels,d:new Date().toLocaleDateString()});try{localStorage.setItem("ss_projects",JSON.stringify(P))}catch(e){}$("pname").value="";render()};
-$("plist").onclick=e=>{const i=e.target.closest("[data-o]");if(i){Object.assign(S,P[+i.dataset.o]);location.hash="tool"}};
+$("save").onclick=()=>{const n=$("pname").value.trim()||`${S.kwp} kWp system`;P.unshift({n,kwp:S.kwp,inv:S.inv,bat:S.bat,panels:S.panels,watts:S.watts,sel:S.sel,UE:S.UE,d:new Date().toLocaleDateString()});try{localStorage.setItem("ss_projects",JSON.stringify(P))}catch(e){}$("pname").value="";render()};
+$("plist").onclick=e=>{const i=e.target.closest("[data-o]");if(i){Object.assign(S,JSON.parse(JSON.stringify(P[+i.dataset.o])));applyPick();location.hash="tool"}};
 function plist(){$("plist").innerHTML=P.length?P.map((p,i)=>`<button class="box card" data-o="${i}"><h2>${p.n}</h2><span style="color:var(--mu)">${p.kwp} kWp, ${p.inv} kW inverter, ${p.bat} kWh battery<br>Saved ${p.d}</span></button>`).join(""):`<p style="color:var(--mu)">No saved projects yet. Save the current design to see it here.</p>`}
 // 3D wiring editor (three.js, loaded on first visit to the Solar tool)
 const ED={ready:false,loading:false,failed:false,nodes:[],wires:[],mode:"move",sel:null,pend:null,hist:[],id:0,key:"",t:null,place:null,ghost:null,pd:null,lt:"Breakers"};
@@ -493,7 +523,7 @@ const BUILD={pv:mPV,inv:mInv,bat:mBat,home:mHome,iso:mIso,cmb:mCmb,mtr:mMtr,mdb:
  spdd:()=>mSpd({c:0x4ea1ff,t:"DC SPD"}),spda:()=>mSpd({c:0x2fb8a6,t:"AC SPD"})};
 // ---- end part models ----
 const LIB={Breakers:[["pvb","PV DC breaker","prot_pv_dc_breaker"],["acb","AC breaker","prot_ac_breaker"],["bmc","Battery DC MCCB","prot_battery_mccb"],["spdd","DC surge protector","prot_spd_dc"],["spda","AC surge protector","prot_spd_ac"]],Switches:[["iso","DC isolator switch","dc_isolator"],["cmb","PV combiner box","combiner_box"]],Power:[["mtr","kWh meter","kwh_meter"],["mdb","Distribution board","dist_board"]]};
-function drawLib(){const U=S.U||UD,t=ED.lt||"Breakers";
+function drawLib(){const U=PRICE(),t=ED.lt||"Breakers";
  $("lib").innerHTML=`<h2>Hardware library</h2><div class="tabs">${Object.keys(LIB).map(k=>`<button class="btn${k===t?" on":""}" data-lt="${k}">${k}</button>`).join("")}</div>`+LIB[t].map(x=>`<button class="btn${ED.place===x[0]?" on":""}" data-add="${x[0]}">${x[1]}<small>${php(U[x[2]]??UD[x[2]])}</small></button>`).join("")+`<p class="todo" style="margin-top:8px">Pick a part, then click the floor of the 3D view to place it.</p>`}
 function lbl(txt,y){const c=document.createElement("canvas");c.width=256;c.height=64;const g=c.getContext("2d");g.fillStyle="#e8edf7";g.font="26px sans-serif";g.textAlign="center";g.fillText(txt,128,40);
  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthTest:false}));sp.scale.set(2.6,.65,1);sp.position.y=y;sp.raycast=()=>{};return sp}
@@ -535,7 +565,7 @@ function startPlace(type){if(!ED.ready)return;if(ED.place===type){cancelPlace();
  ED.place=type;const g=BUILD[type]().g;g.traverse(o=>{if(o.isMesh)[].concat(o.material).forEach(m=>{m.transparent=true;m.opacity=.55})});g.visible=false;ED.t.sc.add(g);ED.ghost=g;upd()}
 function placeAt(x,z){const t=ED.place;if(!t)return;push();const n=mkNode(t,Math.max(-16,Math.min(16,x)),Math.max(-12,Math.min(12,z)),++ED.id);cancelPlace();sel(n);upd()}
 async function initEditor(){if(ED.ready||ED.loading||ED.failed)return;ED.loading=true;
- try{await loadJs("https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js");await loadJs("https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js")}
+ try{await needThree()}
  catch(e){ED.loading=false;ED.failed=true;$("stage").innerHTML=stage();$("edInfo").textContent="The 3D view needs internet access to load three.js. Showing the static diagram instead.";return}
  const el=$("stage"),W=()=>el.clientWidth||600,H=()=>el.clientHeight||430;el.innerHTML="";
  const sc=new THREE.Scene();sc.background=new THREE.Color(0x0a0f1a);const cam=new THREE.PerspectiveCamera(45,W()/H(),.1,200);cam.position.set(0,13,19);
@@ -576,10 +606,159 @@ $("edBar").onclick=e=>{const b=e.target.closest("button");if(!b||!ED.ready)retur
 $("lib").onclick=e=>{const t=e.target.closest("[data-lt]");if(t){ED.lt=t.dataset.lt;drawLib();return}const b=e.target.closest("[data-add]");if(b)startPlace(b.dataset.add)};
 document.addEventListener("keydown",e=>{if(!ED.ready||!$("tool").classList.contains("on")||/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName))return;
  if(e.key==="Escape")cancelPlace();else if(e.key==="Delete"&&ED.sel){push();rmNode(ED.sel);ED.sel=null;upd()}else if((e.ctrlKey||e.metaKey)&&e.key==="z"){e.preventDefault();undo()}});
+// ---- equipment catalog and material picker ----
+// Typical values for generic products. To add a real product, add one line to the list (price = PHP each).
+const CAT={
+ mod:[{id:"gen450",brand:"Generic",model:"Mono PERC 450 W",w:450,voc:49.6,vmp:41.6,isc:11.5,l:2.094,wd:1.038,price:3150},
+  {id:"gen500",brand:"Generic",model:"Mono 500 W",w:500,voc:49.5,vmp:41.5,isc:13.8,l:2.278,wd:1.134,price:3750},
+  {id:"gen550",brand:"Generic",model:"Mono bifacial 550 W",w:550,voc:49.9,vmp:41.8,isc:13.9,l:2.279,wd:1.134,price:4180},
+  {id:"gen580",brand:"Generic N-type",model:"N-type 580 W",w:580,voc:52,vmp:43.5,isc:14,l:2.278,wd:1.134,price:4640}],
+ inv:[{id:"h5",brand:"Generic hybrid",model:"Hybrid 5 kW, 48 V",kw:5,type:"hybrid",maxDcV:500,mpptMin:120,mppts:2,maxA:25,price:45000},
+  {id:"h6",brand:"Generic hybrid",model:"Hybrid 6 kW, 48 V",kw:6,type:"hybrid",maxDcV:500,mpptMin:120,mppts:2,maxA:25,price:51000},
+  {id:"h8",brand:"Generic hybrid",model:"Hybrid 8 kW, 48 V",kw:8,type:"hybrid",maxDcV:500,mpptMin:120,mppts:2,maxA:25,price:76000},
+  {id:"h10",brand:"Generic hybrid",model:"Hybrid 10 kW, 48 V",kw:10,type:"hybrid",maxDcV:500,mpptMin:120,mppts:2,maxA:30,price:98000},
+  {id:"g5",brand:"Generic grid-tied",model:"Grid-tied 5 kW",kw:5,type:"grid-tied",maxDcV:550,mpptMin:90,mppts:2,maxA:25,price:32500},
+  {id:"g8",brand:"Generic grid-tied",model:"Grid-tied 8 kW",kw:8,type:"grid-tied",maxDcV:550,mpptMin:90,mppts:2,maxA:25,price:48000}],
+ bat:[{id:"l100",brand:"Generic LiFePO4",model:"51.2 V 100 Ah",kwh:5.12,price:44000},
+  {id:"l200",brand:"Generic LiFePO4",model:"51.2 V 200 Ah",kwh:10.24,price:87000}]};
+const byId=(a,id)=>a.find(x=>x.id===id);
+const NEWK=["dc_isolator","combiner_box","kwh_meter","dist_board"];
+function pickPO(){const m=byId(CAT.mod,S.sel.mod),iv=byId(CAT.inv,S.sel.inv),bt=byId(CAT.bat,S.sel.bat),o={};
+ if(m)o.panel_per_watt=+(m.price/m.w).toFixed(4);if(iv)o.inverter_per_kw=+(iv.price/iv.kw).toFixed(2);if(bt)o.bat_kwh=+(bt.price/bt.kwh).toFixed(2);return o}
+function ovr(){return Object.assign({},pickPO(),S.UE||{})}
+function PRICE(){return Object.assign({},UD,ovr())}
+function sendPO(){return Object.fromEntries(Object.entries(ovr()).filter(e=>!NEWK.includes(e[0])))}
+const curKey=()=>JSON.stringify([Math.round(S.extras||0),ovr(),S.sel]);
+function optsGrouped(arr,label){const by={};arr.forEach(x=>(by[x.brand]=by[x.brand]||[]).push(x));return Object.keys(by).map(b=>`<optgroup label="${b}">${by[b].map(x=>`<option value="${x.id}">${label(x)}</option>`).join("")}</optgroup>`).join("")}
+function buildPick(){
+ $("modSel").innerHTML=optsGrouped(CAT.mod,x=>`${x.model}`);
+ $("invSel").innerHTML='<option value="auto">Auto: size from my usage</option>'+optsGrouped(CAT.inv,x=>x.model);
+ $("batSel").innerHTML='<option value="auto">Auto: size from my usage</option><option value="none">No battery</option>'+optsGrouped(CAT.bat,x=>`${x.model} (${x.kwh} kWh)`)}
+function pickUI(){$("modSel").value=S.sel.mod;$("invSel").value=S.sel.inv;$("batSel").value=S.sel.bat;$("batQty").value=S.sel.qty}
+function plim(){const g=(id,d)=>{const v=parseFloat($(id).value);return Number.isFinite(v)&&v>0?v:d},lt=parseFloat($("lowT").value),
+ voc=g("voc",49.5),vmp=g("vmp",41.5),iSc=g("iSc",13.8),maxV=g("maxDcV",500),mn=g("mpptMin",120),mp=Math.max(1,Math.round(g("mppts",2))),mA=g("maxPvA",25),vf=vocF(Number.isFinite(lt)?lt:15),VL=$("bldg").value==="other"?1000:600,
+ maxS=Math.max(1,Math.floor(Math.min(maxV,VL)/(voc*vf))),minS=Math.ceil(mn/(vmp*.85)),maxStr=mp*Math.max(1,Math.floor(mA/iSc)),cap=Math.floor(1.5*S.inv*1000/S.watts),
+ max=Math.max(minS,Math.min(maxS*maxStr,cap)),rec=Math.min(max,Math.max(minS,Math.round(S.inv*1000/S.watts)));return{min:minS,rec,max}}
+function setPanels(n){S.panels=Math.max(1,Math.round(n));S.kwp=S.panels*S.watts/1000;S.manual=true;$("simMsg").textContent="Panel count changed. Run the simulation to update cost and savings.";render()}
+function applyPick(init){const s=S.sel,m=byId(CAT.mod,s.mod),iv=byId(CAT.inv,s.inv);
+ if(m){$("iSc").value=m.isc;$("vmp").value=m.vmp;$("voc").value=m.voc;$("rL").value=m.l;$("rW").value=m.wd;
+  if(m.w!==S.watts){const old=S.kwp;S.watts=m.w;S.panels=Math.max(1,Math.ceil(old*1000/m.w-1e-9));S.kwp=S.panels*m.w/1000;if(S.sim)S.manual=true}}
+ if(iv){$("maxDcV").value=iv.maxDcV;$("mpptMin").value=iv.mpptMin;$("mppts").value=iv.mppts;$("maxPvA").value=iv.maxA;S.inv=iv.kw;
+  if(iv.type==="grid-tied"){$("topo").value="grid-tied";s.bat="none"}else if($("topo").value==="grid-tied")$("topo").value="hybrid-no-export"}
+ const bt=byId(CAT.bat,s.bat);
+ if(bt){S.bat=+(bt.kwh*s.qty).toFixed(2);if($("topo").value==="grid-tied")$("topo").value="hybrid-no-export"}else if(s.bat==="none")S.bat=0;
+ pickUI();if(init)return;
+ if(S.sim)$("simMsg").textContent="Equipment changed. Run the simulation to update cost and savings.";
+ rdraw();render()}
+function pickSync(){const L=plim(),sl=$("panelSlider"),m=byId(CAT.mod,S.sel.mod),iv=byId(CAT.inv,S.sel.inv),bt=byId(CAT.bat,S.sel.bat);
+ sl.min=L.min;sl.max=L.max;sl.value=Math.min(L.max,Math.max(L.min,S.panels));
+ $("pMin").textContent=`Minimum (${L.min})`;$("pRec").textContent=`Recommended (${L.rec})`;$("pMax").textContent=`Maximum (${L.max})`;
+ $("panelLbl").textContent=`${S.kwp.toFixed(2)} kWp, DC/AC ${(S.kwp/S.inv).toFixed(2)}`;
+ const li=[];if(m)li.push(`Module: ${m.w} W, ${m.l} × ${m.wd} m, Voc ${m.voc} V, Isc ${m.isc} A.`);
+ li.push(iv?`Inverter: ${iv.kw} kW ${iv.type}, ${iv.mppts} MPPT inputs, ${iv.mpptMin} to ${iv.maxDcV} V DC, ${iv.maxA} A per input.`:"Inverter: sized from your usage when you run the simulation.");
+ li.push(bt?`Battery: ${S.sel.qty} × ${bt.kwh} kWh = ${(bt.kwh*S.sel.qty).toFixed(2)} kWh.`:S.sel.bat==="none"?"Battery: none.":"Battery: sized from your usage when you run the simulation.");
+ $("pickInfo").innerHTML=li.join("<br>")+`<br><span style="opacity:.8">Catalog values are typical. Check the datasheet, and edit limits under Module and site settings.</span>`}
+$("modSel").onchange=()=>{S.sel.mod=$("modSel").value;applyPick()};
+$("invSel").onchange=()=>{S.sel.inv=$("invSel").value;applyPick()};
+$("batSel").onchange=()=>{S.sel.bat=$("batSel").value;applyPick()};
+$("batQty").onchange=()=>{S.sel.qty=Math.max(1,Math.min(20,Math.round(+$("batQty").value||1)));applyPick()};
+$("panelSlider").oninput=e=>setPanels(+e.target.value);
+$("pMin").onclick=()=>setPanels(plim().min);$("pRec").onclick=()=>setPanels(plim().rec);$("pMax").onclick=()=>setPanels(plim().max);
+$("bom").onchange=e=>{const i=e.target.closest(".pin");if(!i)return;const v=parseFloat(i.value),f=+i.dataset.pf||1;if(!Number.isFinite(v)||v<0){render();return}
+ S.UE[i.dataset.pk]=v/f;if(S.sim)$("simMsg").textContent="Prices changed. Run the simulation to update cost and savings.";render()};
+$("bomReset").onclick=()=>{S.UE={};render()};
+buildPick();applyPick(true);
+// ---- 3D roof and sun view ----
+let T3P=null;
+function needThree(){if(window.THREE&&THREE.OrbitControls)return Promise.resolve();return T3P||(T3P=(async()=>{await loadJs("https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js");await loadJs("https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js")})().catch(e=>{T3P=null;throw e}))}
+function siteLat(){const c=RM.faces.filter(f=>f.fit);if(c.length)return c.reduce((a,f)=>a+f.fit.la,0)/c.length;if(RM.ready)return RM.map.getCenter().lat;return parseFloat($("lat").value)||14.6}
+const fmtT=h=>{const H=Math.floor(h);return(((H+11)%12)+1)+":"+(h%1?"30":"00")+" "+(H>=12?"PM":"AM")};
+const TODAY=Math.floor((Date.now()-new Date(new Date().getFullYear(),0,0))/864e5);
+$("sunD").insertAdjacentHTML("afterbegin",`<option value="${TODAY}">Today</option>`);$("sunD").value=String(TODAY);$("s3d").innerHTML=$("sunD").innerHTML;
+$("s3chips").innerHTML=[["now","Now"],[6,"6 AM"],[9,"9 AM"],[12,"12 PM"],[15,"3 PM"],[18,"6 PM"]].map(c=>`<button class="btn" data-h="${c[0]}">${c[1]}</button>`).join("");
+$("s3chips").onclick=e=>{const b=e.target.closest("[data-h]");if(!b)return;let h=b.dataset.h;if(h==="now"){const d=new Date();h=Math.max(5,Math.min(19,d.getHours()+(d.getMinutes()>=30?.5:0)));$("sunD").value=String(TODAY)}$("sun").value=h;drawSun()};
+$("s3h").oninput=()=>{$("sun").value=$("s3h").value;drawSun()};
+$("s3d").onchange=()=>{$("sunD").value=$("s3d").value;drawSun()};
+const r3clear=g=>{while(g.children.length){const o=g.children.pop();o.traverse(c=>{if(c.geometry)c.geometry.dispose();if(c.material)[].concat(c.material).forEach(m=>{if(m.map&&m.map!==CELL)m.map.dispose();m.dispose()})})}};
+function r3lbl(txt,w,col){const c=document.createElement("canvas");c.width=512;c.height=96;const g=c.getContext("2d");g.font="bold 40px sans-serif";g.textAlign="center";g.fillStyle=col||"#e8edf7";g.fillText(txt,256,62);
+ const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthTest:false}));sp.scale.set(w,w*96/512,1);sp.raycast=()=>{};return sp}
+function r3faces(){if(!R3.ready||RM.view!=="3d")return;
+ r3clear(R3.g);R3.faceMeshes=[];
+ const cl=RM.faces.map((f,i)=>({f,i})).filter(o=>o.f.fit),n=cl.length,
+  la0=n?cl.reduce((a,o)=>a+o.f.fit.la,0)/n:siteLat(),lo0=n?cl.reduce((a,o)=>a+o.f.fit.lo,0)/n:(RM.ready?RM.map.getCenter().lng:parseFloat($("lon").value)||120.98),
+  hv=parseFloat($("rH").value),H=Number.isFinite(hv)?Math.max(0,hv):3;let maxR=6;
+ cl.forEach(o=>{const f=o.f,sel=o.i===RM.cur,XY=toXY(f.pts,la0,lo0),az=f.az*Math.PI/180,tn=Math.tan(Math.min(f.tilt,80)*Math.PI/180),
+   cx=XY.reduce((a,p)=>a+p[0],0)/XY.length,cy=XY.reduce((a,p)=>a+p[1],0)/XY.length,
+   rel=(X,Y)=>-((X-cx)*Math.sin(az)+(Y-cy)*Math.cos(az))*tn,mn=Math.min(...XY.map(p=>rel(p[0],p[1]))),yAt=(X,Y)=>H+rel(X,Y)-mn+.01,
+   V2=XY.map(p=>new THREE.Vector2(p[0],p[1]));
+  XY.forEach(p=>{maxR=Math.max(maxR,Math.hypot(p[0],p[1]))});
+  if(H>.05){const w=new THREE.Mesh(new THREE.ExtrudeGeometry(new THREE.Shape(V2),{depth:H-.02,bevelEnabled:false}),M(0xcfc6b4,{roughness:.9,metalness:0}));w.rotation.x=-Math.PI/2;w.castShadow=true;w.receiveShadow=true;R3.g.add(w)}
+  const idx=THREE.ShapeUtils.triangulateShape(V2,[]),pos=[];XY.forEach(p=>pos.push(p[0],yAt(p[0],p[1]),-p[1]));
+  const rg=new THREE.BufferGeometry();rg.setAttribute("position",new THREE.Float32BufferAttribute(pos,3));rg.setIndex([].concat(...idx));rg.computeVertexNormals();
+  const rm=new THREE.Mesh(rg,M(sel?0x8e99b0:0x6f7889,{roughness:.8,metalness:0,side:THREE.DoubleSide}));rm.castShadow=true;rm.receiveShadow=true;rm.userData.fi=o.i;R3.g.add(rm);R3.faceMeshes.push(rm);
+  R3.g.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(XY.map(p=>new THREE.Vector3(p[0],yAt(p[0],p[1])+.03,-p[1]))),new THREE.LineBasicMaterial({color:sel?0xf2a900:0x9aa6bd})));
+  const g=f.fit.g;
+  if(g&&g.out.length){const off=toXY([[f.fit.la,f.fit.lo]],la0,lo0)[0],c=Math.cos(g.ang),s=Math.sin(g.ang),land=g.pw>g.ph,pp=[],uv=[],ix=[],ed=[];
+   g.out.forEach(q=>{const x=q[0],y=q[1],C=[[x,y],[x+g.pw,y],[x+g.pw,y+g.ph],[x,y+g.ph]].map(p=>{const X=p[0]*c-p[1]*s+off[0],Y=p[0]*s+p[1]*c+off[1];return[X,yAt(X,Y)+.08,-Y]}),b=pp.length/3;
+    C.forEach(v=>pp.push(v[0],v[1],v[2]));uv.push(...(land?[0,0,0,1,1,1,1,0]:[0,0,1,0,1,1,0,1]));ix.push(b,b+1,b+2,b,b+2,b+3);
+    for(let k=0;k<4;k++){const a=C[k],e=C[(k+1)%4];ed.push(a[0],a[1]+.005,a[2],e[0],e[1]+.005,e[2])}});
+   const pg=new THREE.BufferGeometry();pg.setAttribute("position",new THREE.Float32BufferAttribute(pp,3));pg.setAttribute("uv",new THREE.Float32BufferAttribute(uv,2));pg.setIndex(ix);pg.computeVertexNormals();
+   const pm=new THREE.Mesh(pg,M(0xffffff,{map:cellTex(),roughness:.3,metalness:.25,side:THREE.DoubleSide}));pm.castShadow=true;pm.receiveShadow=true;pm.userData.fi=o.i;R3.g.add(pm);R3.faceMeshes.push(pm);
+   const eg=new THREE.BufferGeometry();eg.setAttribute("position",new THREE.Float32BufferAttribute(ed,3));R3.g.add(new THREE.LineSegments(eg,new THREE.LineBasicMaterial({color:0xaec2e8})))}
+  const ft=Math.max(...XY.map(p=>yAt(p[0],p[1]))),lb=r3lbl(`${fname(f,o.i)}: ${f.fit.n} panels`,Math.max(5,maxR*.7),"#e8edf7");lb.position.set(cx,ft+1.6,-cy);R3.g.add(lb)});
+ const ext=Math.max(14,Math.ceil(maxR*1.6/2)*2);R3.ext=ext;
+ r3clear(R3.env);const gr=new THREE.Mesh(new THREE.PlaneGeometry(ext*3,ext*3),new THREE.MeshStandardMaterial({color:0x101828,roughness:1,metalness:0}));gr.rotation.x=-Math.PI/2;gr.receiveShadow=true;R3.env.add(gr);
+ const gh=new THREE.GridHelper(ext*2,ext,0x2a3a5a,0x18233a);gh.position.y=.02;R3.env.add(gh);
+ [["N",0,-1],["E",1,0],["S (180°)",0,1],["W",-1,0]].forEach(a=>{const t=r3lbl(a[0],ext*.22,"#f2a900");t.position.set(a[1]*ext*1.08,.5,a[2]*ext*1.08);R3.env.add(t)});
+ if(!R3.framed&&n){R3.cam.position.set(0,ext*.8,ext*1.5);R3.oc.target.set(0,H/2,0);R3.oc.update();R3.framed=true}
+ const cur=RM.faces[RM.cur];$("r3tag").textContent=n&&cur?`${fname(cur,RM.cur)}, tilt ${cur.tilt}°, direction ${cur.az}°`:"No roof outlined yet";
+ const mg=$("r3msg");mg.hidden=!!n;if(!n)mg.textContent="Outline a roof on the 2D map and press Finish outline. It will appear here. The sun path works without one.";
+ r3sun()}
+function r3sun(){const lat=siteLat(),doy=+$("sunD").value,h=+$("sun").value,s=sunPos(lat,doy,h),up=s.alt>0;
+ $("s3h").value=h;$("s3d").value=$("sunD").value;$("s3t").textContent=fmtT(h);
+ document.querySelectorAll("#s3chips [data-h]").forEach(b=>b.classList.toggle("on",b.dataset.h!=="now"&&Math.abs(+b.dataset.h-h)<.25));
+ const f=cf(),tl=f.tilt*Math.PI/180,sl=up?Math.max(0,Math.sin(s.alt*Math.PI/180)*Math.cos(tl)+Math.cos(s.alt*Math.PI/180)*Math.sin(tl)*Math.cos((s.az-f.az)*Math.PI/180)):0;
+ $("s3txt").textContent=up?`Sun ${s.alt.toFixed(0)}° up, toward ${["N","NE","E","SE","S","SW","W","NW"][Math.round(s.az/45)%8]}. Light on the selected face: ${Math.round(sl*100)}% of full strength.`:"The sun is below the horizon at this hour.";
+ if(!R3.ready||RM.view!=="3d")return;
+ const ext=R3.ext||14,Rs=Math.max(18,ext*1.7),V=(az,al)=>{const a=az*Math.PI/180,l=al*Math.PI/180;return new THREE.Vector3(Rs*Math.cos(l)*Math.sin(a),Rs*Math.sin(l),-Rs*Math.cos(l)*Math.cos(a))};
+ r3clear(R3.sg);const pts=[];for(let k=4;k<=20;k+=.25){const q=sunPos(lat,doy,k);if(q.alt>0)pts.push(V(q.az,q.alt))}
+ if(pts.length>1)R3.sg.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0xf2a900})));
+ [[6,"6 AM"],[9,"9 AM"],[12,"12 PM"],[15,"3 PM"],[18,"6 PM"]].forEach(a=>{const q=sunPos(lat,doy,a[0]);if(q.alt>0){const p=V(q.az,q.alt),m=new THREE.Mesh(new THREE.SphereGeometry(Rs*.012,8,8),new THREE.MeshBasicMaterial({color:0xf2a900}));m.position.copy(p);R3.sg.add(m);const t=r3lbl(a[1],Rs*.14,"#f2c14e");t.position.copy(p).multiplyScalar(1.07);R3.sg.add(t)}});
+ if(up){const p=V(s.az,s.alt),m=new THREE.Mesh(new THREE.SphereGeometry(Rs*.035,16,16),new THREE.MeshBasicMaterial({color:0xffe08a}));m.position.copy(p);R3.sg.add(m);
+  const ln=new THREE.Line(new THREE.BufferGeometry().setFromPoints([p,new THREE.Vector3(0,0,0)]),new THREE.LineDashedMaterial({color:0xf2c14e,dashSize:Rs*.03,gapSize:Rs*.02}));ln.computeLineDistances();R3.sg.add(ln);R3.dl.position.copy(p)}
+ R3.dl.intensity=up?.35+.7*Math.min(1,s.alt/25):0;R3.hl.intensity=up?.5:.18;
+ const sc=R3.dl.shadow.camera,B=ext*1.4;sc.left=-B;sc.right=B;sc.top=B;sc.bottom=-B;sc.near=1;sc.far=Rs*3;sc.updateProjectionMatrix()}
+async function init3d(){if(R3.ready){R3.rd.setSize($("r3c").clientWidth||640,$("r3c").clientHeight||480);r3faces();return}if(R3.loading||R3.failed)return;R3.loading=true;
+ const mg=$("r3msg");mg.hidden=false;mg.textContent="Loading the 3D view…";
+ try{await needThree()}catch(e){R3.loading=false;R3.failed=true;mg.textContent="The 3D view needs internet access to load three.js. The 2D map and sun path still work.";return}
+ const el=$("r3c"),W=()=>el.clientWidth||640,H=()=>el.clientHeight||480;
+ const sc=new THREE.Scene();sc.background=new THREE.Color(0x0a0f1a);const cam=new THREE.PerspectiveCamera(45,W()/H(),.1,600);cam.position.set(0,12,22);
+ const rd=new THREE.WebGLRenderer({antialias:true});rd.setPixelRatio(Math.min(devicePixelRatio||1,2));rd.setSize(W(),H());rd.shadowMap.enabled=true;rd.shadowMap.type=THREE.PCFSoftShadowMap;rd.domElement.style.touchAction="none";el.appendChild(rd.domElement);
+ const oc=new THREE.OrbitControls(cam,rd.domElement);oc.maxPolarAngle=Math.PI/2.02;oc.target.set(0,1.5,0);
+ R3.hl=new THREE.HemisphereLight(0xbcd0ff,0x1a2238,.5);sc.add(R3.hl);
+ R3.dl=new THREE.DirectionalLight(0xffffff,.9);R3.dl.castShadow=true;R3.dl.shadow.mapSize.set(2048,2048);R3.dl.shadow.bias=-.0004;R3.dl.position.set(10,20,10);sc.add(R3.dl);sc.add(R3.dl.target);
+ R3.g=new THREE.Group();R3.sg=new THREE.Group();R3.env=new THREE.Group();sc.add(R3.g);sc.add(R3.sg);sc.add(R3.env);
+ Object.assign(R3,{sc,cam,rd,oc,faceMeshes:[]});
+ const ray=new THREE.Raycaster(),ndc=new THREE.Vector2(),aim=e=>{const r=rd.domElement.getBoundingClientRect();ndc.set((e.clientX-r.left)/r.width*2-1,-((e.clientY-r.top)/r.height)*2+1);ray.setFromCamera(ndc,cam)};
+ rd.domElement.addEventListener("pointerdown",e=>{aim(e);const hit=ray.intersectObjects(R3.faceMeshes,false)[0];if(!hit)return;const fi=hit.object.userData.fi;if(fi!==RM.cur)useFace(fi);
+  if(R3.mode==="tilt"){const f=cf();R3.drag={x0:e.clientX,y0:e.clientY,t0:f.tilt,a0:f.az};oc.enabled=false;rd.domElement.setPointerCapture(e.pointerId)}},true);
+ rd.domElement.addEventListener("pointermove",e=>{const d=R3.drag;if(!d)return;const f=cf();f.tilt=Math.round(Math.max(0,Math.min(60,d.t0+(d.y0-e.clientY)*.25)));f.az=Math.round(((d.a0+(e.clientX-d.x0)*.5)%360+360)%360);
+  $("rTilt").value=f.tilt;$("rAz").value=f.az;rstats();rchips();r3faces();drawSun()});
+ rd.domElement.addEventListener("pointerup",()=>{R3.drag=null;oc.enabled=true});
+ new ResizeObserver(()=>{if(!el.clientWidth)return;cam.aspect=W()/H();cam.updateProjectionMatrix();rd.setSize(W(),H())}).observe(el);
+ (function loop(){requestAnimationFrame(loop);if(!$("roof").classList.contains("on")||RM.view!=="3d")return;oc.update();rd.render(sc,cam)})();
+ R3.ready=true;R3.loading=false;mg.hidden=true;r3faces()}
+function setView(v){RM.view=v;document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("on",b.dataset.view===v));const d=v==="3d";
+ ["rmap","rbar","rqrow","rregrow"].forEach(id=>{$(id).hidden=d});$("r3d").hidden=!d;
+ if(d)init3d();else if(RM.ready)setTimeout(()=>RM.map.invalidateSize(),0)}
+document.querySelectorAll("[data-view]").forEach(b=>b.onclick=()=>setView(b.dataset.view));
+document.querySelectorAll("[data-m3]").forEach(b=>b.onclick=()=>{R3.mode=b.dataset.m3;document.querySelectorAll("[data-m3]").forEach(x=>x.classList.toggle("on",x===b));
+ $("r3hint").textContent=R3.mode==="tilt"?"Drag a roof face: up or down changes the tilt, left or right turns the direction.":"Drag to orbit, scroll to zoom, right-drag to pan. Click a face to select it."});
+$("rH").addEventListener("input",r3faces);
 // render all
 function render(){E=elec();bomHTML();
  $("sum").innerHTML=[["Array",S.kwp.toFixed(2),"kWp"],["Inverter",S.inv,"kW"],["DC to AC",(S.kwp/S.inv).toFixed(2),"ratio"],["Battery",S.bat,"kWh"],["AC breaker",E.aB,"A"],["Est. cost",php(S.cost),S.sim&&!S.manual?"":"rough"]].map(s=>`<div class="stat"><small>${s[0]}</small><b>${s[1]}</b> <span>${s[2]}</span></div>`).join("");
- if(!ED.ready&&!ED.loading&&!ED.failed)$("stage").innerHTML=stage();syncEd();$("panelQty").value=S.panels;drawLib();
+ if(!ED.ready&&!ED.loading&&!ED.failed)$("stage").innerHTML=stage();syncEd();$("panelQty").value=S.panels;pickSync();drawLib();
  document.querySelectorAll("#wbTabs .btn").forEach((b,i)=>b.classList.toggle("on",i===wbi));$("wb").innerHTML=wbHTML();$("bom").innerHTML=bomHTML();
  $("loads").innerHTML=S.loads.length?`<table><tr><th>Appliance</th><th>Watts</th><th>Hours</th><th>Qty</th><th></th></tr>${S.loads.map((l,i)=>`<tr><td>${l.n}</td>${["w","h","q"].map(k=>`<td><input type="number" min="0" value="${l[k]}" data-f="${i}.${k}" style="width:76px"></td>`).join("")}<td><button class="btn" data-d="${i}" aria-label="Remove ${l.n}">Remove</button></td></tr>`).join("")}</table>`:`<p style="color:var(--mu)">Nothing added yet. Pick an appliance above.</p>`;
  $("rec").innerHTML=recHTML();drawSun();irr();roi();yld();plist()}
