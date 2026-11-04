@@ -111,7 +111,7 @@ td.n,th.n{text-align:right}
  <div class="row" style="margin-bottom:8px"><input id="rq" placeholder="Search city, barangay or address" style="flex:1;min-width:200px"><button class="btn" id="rgo">Find</button></div>
  <div class="row" style="margin-bottom:10px"><button class="btn" data-reg="14.5995,120.9842">Manila</button><button class="btn" data-reg="13.7565,121.0583">Batangas</button><button class="btn" data-reg="10.3157,123.8854">Cebu</button><button class="btn" data-reg="7.1907,125.4553">Davao</button><button class="btn" data-reg="10.7202,122.5621">Iloilo</button><button class="btn" data-reg="16.4023,120.596">Baguio</button></div>
  <div class="g roofg">
-  <div><div class="row" style="margin-bottom:8px"><button class="btn" id="rDraw">Draw roof</button><button class="btn" id="rFin">Finish outline</button><button class="btn" id="rClr">Clear</button><button class="btn" id="rDel">Remove face</button><span id="rMsg" style="color:var(--mu)"></span></div>
+  <div><div class="row" style="margin-bottom:8px"><button class="btn" id="rDraw">Draw roof</button><button class="btn" id="rFin">Finish outline</button><button class="btn" id="rClr">Clear</button><button class="btn" id="rDel">Remove face</button><span id="rMsg" style="color:var(--mu)"></span><span style="flex:1"></span><button class="btn on" data-base="sat">Satellite</button><button class="btn" data-base="street">Street</button></div>
    <div id="rmap">Loading the map…</div></div>
   <div class="box"><h2>Roof faces</h2><div class="row" id="faces" style="margin-bottom:10px"></div><div id="rstats"></div><p id="rfit" style="margin:8px 0 0"></p>
    <div class="g g2" style="margin-top:12px">
@@ -284,8 +284,9 @@ async function initMap(){if(RM.ready){RM.map.invalidateSize();return}if(RM.loadi
  try{const l=document.createElement("link");l.rel="stylesheet";l.href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css";document.head.appendChild(l);await loadJs("https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js")}
  catch(e){RM.loading=false;RM.failed=true;$("rmap").textContent="The map needs internet access to load. You can still use the sun path below.";return}
  $("rmap").textContent="";$("rmap").style.padding="0";const m=RM.map=L.map("rmap").setView([gv("lat",14.5995),gv("lon",120.9842)],17);
- L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{maxZoom:20,maxNativeZoom:18,attribution:"Imagery © Esri"}).addTo(m);
+ RM.layers={sat:L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{maxZoom:20,maxNativeZoom:18,attribution:"Imagery © Esri"}),street:L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:20,maxNativeZoom:19,attribution:"© OpenStreetMap contributors"})};RM.layers[RM.base||"sat"].addTo(m);
  RM.g=L.layerGroup().addTo(m);m.on("click",e=>{if(!RM.drawing||cf().closed)return;cf().pts.push([e.latlng.lat,e.latlng.lng]);rdraw()});RM.ready=true;RM.loading=false;rdraw()}
+document.querySelectorAll("[data-base]").forEach(b=>b.onclick=()=>{RM.base=b.dataset.base;document.querySelectorAll("[data-base]").forEach(x=>x.classList.toggle("on",x===b));if(RM.ready){Object.values(RM.layers).forEach(l=>RM.map.removeLayer(l));RM.layers[RM.base].addTo(RM.map)}});
 document.querySelectorAll("[data-reg]").forEach(b=>b.onclick=()=>{if(RM.ready){const[a,o]=b.dataset.reg.split(",").map(Number);RM.map.setView([a,o],17)}});
 $("rgo").onclick=async()=>{const q=$("rq").value.trim();if(!q||!RM.ready)return;$("rMsg").textContent="Searching…";
  try{const r=await fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&q="+encodeURIComponent(q)),d=await r.json();if(d[0]){RM.map.setView([+d[0].lat,+d[0].lon],18);$("rMsg").textContent=""}else $("rMsg").textContent="No match. Try a nearby city or barangay."}catch(e){$("rMsg").textContent="Search failed. Check your connection."}};
