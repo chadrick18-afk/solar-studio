@@ -39,6 +39,7 @@ h1{font-size:28px;margin:0 0 4px;letter-spacing:-.01em}h2{font-size:17px;margin:
 input[type=range]{padding:0;accent-color:var(--ac)}
 [hidden]{display:none!important}
 #r3d{position:relative;height:480px;border:1px solid var(--ln);border-radius:var(--r);overflow:hidden;background:#0a0f1a}
+#p3d{position:relative;height:480px;border:1px solid var(--ln);border-radius:var(--r);overflow:hidden;background:#0a0f1a}
 #r3c{position:absolute;inset:0}#r3c canvas{display:block}
 .o3{position:absolute;z-index:2;background:#0c121ecc;border:1px solid var(--ln);border-radius:10px;padding:6px 8px;font-size:13px}
 .o3.tl{left:10px;top:10px;max-width:min(300px,55%)}.o3.tr{right:10px;top:10px;display:flex;gap:6px}.o3.bc{left:10px;right:10px;bottom:10px}
@@ -55,6 +56,7 @@ td.n,th.n{text-align:right}
 .hero h1{font-size:34px;max-width:18ch}
 .card{cursor:pointer;text-align:left}.card:hover{border-color:var(--ac)}
 .ok{color:var(--ac2)}.bad{color:var(--rd)}
+#pnl .pt,#pnl .pw{pointer-events:none}#pnl.wm .pt{pointer-events:all;cursor:crosshair}#pnl.wm .pt:hover{fill:#f2a900;fill-opacity:1}#pnl.wm .pw{pointer-events:stroke;cursor:pointer}
 .fl{stroke-dasharray:10 8;animation:fl .9s linear infinite}@keyframes fl{to{stroke-dashoffset:-18}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
@@ -84,6 +86,9 @@ td.n,th.n{text-align:right}
  <div class="g main2" style="margin-top:12px">
   <div>
    <div class="row" id="edBar" style="margin-bottom:8px"><button class="btn on" data-mode="move">Move</button><button class="btn" data-mode="p">+ Wire</button><button class="btn" data-mode="n">− Wire</button><button class="btn" data-mode="pair">+/− Pair</button><button class="btn" data-mode="g">Ground</button><button class="btn" data-mode="cut">Cut wire</button><span style="flex:1"></span><button class="btn" id="edRot">Rotate</button><button class="btn" id="edDel">Delete</button><button class="btn" id="edUndo">Undo (0)</button><button class="btn" id="edClear">Clear wires</button></div>
+   <div class="row" id="edWall" hidden style="margin-bottom:8px"><b>Wall</b><label style="display:flex;align-items:center;gap:6px;margin:0">Length (m)<input type="number" data-wk="l" id="wL" min="0.5" max="30" step="0.1" style="width:80px"></label><label style="display:flex;align-items:center;gap:6px;margin:0">Height (m)<input type="number" data-wk="h" id="wH" min="0.5" max="8" step="0.1" style="width:80px"></label><label style="display:flex;align-items:center;gap:6px;margin:0">Thickness (m)<input type="number" data-wk="t" id="wT" min="0.05" max="1" step="0.05" style="width:80px"></label></div>
+   <div class="row" id="edPV" hidden style="margin-bottom:8px"><b id="pNm"></b><label style="display:flex;align-items:center;gap:6px;margin:0">Panels<input type="number" data-pk="n" id="pN" min="1" max="400" step="1" style="width:70px"></label><label style="display:flex;align-items:center;gap:6px;margin:0">Tilt °<input type="number" data-pk="tilt" id="pT" min="0" max="45" step="1" style="width:64px"></label><label style="display:flex;align-items:center;gap:6px;margin:0">Facing ° (180 = south)<input type="number" data-pk="az" id="pA" min="0" max="360" step="5" style="width:70px"></label><span id="pvInfo" style="flex-basis:100%;font-size:13px;color:var(--mu)"></span></div>
+   <div class="row" id="edMount" hidden style="margin-bottom:8px"><b>Wall mount</b><label style="display:flex;align-items:center;gap:6px;margin:0">Height above floor (m)<input type="number" data-mk="y" id="mY" min="0" max="8" step="0.05" style="width:80px"></label><label style="display:flex;align-items:center;gap:6px;margin:0">Along wall (m)<input type="number" data-mk="u" id="mU" min="-30" max="30" step="0.05" style="width:80px"></label><button class="btn" id="mDet">Detach to floor</button></div>
    <div class="stage" id="stage"></div>
    <p class="todo" id="edInfo">Loading the 3D view…</p>
   </div>
@@ -108,14 +113,42 @@ td.n,th.n{text-align:right}
   <p class="todo">Materials only. Labor, engineering and permitting fees are excluded. Unit prices are editable: change a price and press Enter. Edited prices turn yellow and are sent to the simulation.</p></div>
 </section>
 
+<section id="parts">
+ <h1>Parts 3D</h1><p class="sub">A 3D model for every catalog item, plus the mounting hardware that holds the array to the roof. Drag to orbit, scroll to zoom.</p>
+ <div class="g main2">
+  <div>
+   <div class="row" style="margin-bottom:8px"><label style="display:flex;align-items:center;gap:6px;margin:0"><input type="checkbox" id="pDim" checked style="width:auto"> Dimensions</label><label style="display:flex;align-items:center;gap:6px;margin:0"><input type="checkbox" id="pSpin" style="width:auto"> Spin</label><span style="flex:1"></span><span id="pExRow" class="row" hidden><label style="margin:0">Exploded view</label><input type="range" id="pEx" min="0" max="100" value="0" style="width:140px"></span><button class="btn" id="pReset">Reset view</button></div>
+   <div id="p3d"><div id="p3c" style="position:absolute;inset:0"></div><div class="o3 mid" id="pMsg" hidden></div></div>
+  </div>
+  <div class="box lib" id="pList"></div>
+ </div>
+ <div class="g g2" style="margin-top:12px">
+  <div class="box"><h2 id="pTitle"></h2><div id="pSpec"></div></div>
+  <div class="box"><h2>Mounting parts for your design</h2><div id="pMt"></div></div>
+ </div>
+</section>
+
+<section id="panel">
+ <h1>Panel builder</h1><p class="sub">Build the distribution panel the way it goes in the enclosure. Drag parts onto the DIN rails, or start from a kit sized to your design.</p>
+ <div class="g main2"><div>
+  <div class="row" style="margin-bottom:8px"><button class="btn pri" data-kit="hyb">Hybrid kit</button><button class="btn" data-kit="gt">Grid-tied kit</button><button class="btn" id="pnClr">Clear all</button><button class="btn" id="pnExp">Export SVG</button><select id="pnEnc" style="width:auto" aria-label="Enclosure size"></select><button class="btn on" data-pm="move">Move</button><button class="btn" data-pm="wire">Draw wires</button><select id="pnWc" style="width:130px" hidden aria-label="Wire colour"><option value="L">L (brown)</option><option value="N">N (blue)</option><option value="E">Earth (green)</option><option value="P">DC+ (red)</option><option value="M">DC− (black)</option></select><span style="flex:1"></span><span id="pnSel" class="row" hidden><b id="pnSelN"></b><select id="pnAmp" style="width:90px"></select><button class="btn" id="pnDel">Delete</button></span></div>
+  <svg id="pnl" viewBox="0 0 720 520" style="width:100%;height:auto;touch-action:none;background:#0a0f1a;border:1px solid var(--ln);border-radius:var(--r)"></svg></div>
+  <div class="box lib" id="pnPal"></div></div>
+ <div class="g g2" style="margin-top:12px"><div class="box"><h2>Protection checks</h2><div id="pnChk"></div></div><div class="box"><h2>Parts list</h2><div id="pnBom"></div></div></div>
+</section>
+
 <section id="load">
  <h1>Load calculator</h1><p class="sub">Add the appliances you run. The totals size the inverter, panels and battery.</p>
  <div class="g g2" style="grid-template-columns:1.4fr 1fr">
   <div>
    <div class="box"><h2>Quick add</h2><div class="row" id="presets"></div></div>
+   <div class="box" style="margin-top:12px"><h2>Add your own appliance</h2>
+    <div class="g" style="grid-template-columns:2fr 1fr 70px"><div><label>Name or model</label><input id="caName" placeholder="e.g. Carrier 1.5HP inverter aircon" autocomplete="off"></div><div><label>Watts (auto)</label><input type="number" id="caW" min="0" step="any" placeholder="auto"></div><div><label>Qty</label><input type="number" id="caQ" value="1" min="1"></div></div>
+    <div class="g" style="grid-template-columns:1fr 1fr 1fr auto;margin-top:10px;align-items:end"><div><label>Used from</label><input type="time" id="caS"></div><div><label>Until</label><input type="time" id="caE"></div><div><label>Hours per day</label><input type="number" id="caH" min="0" max="24" step="any" value="4"></div><button class="btn pri" id="caAdd">Add appliance</button></div>
+    <p class="todo" id="caNote">Type a name, brand, size or rating. The watts are filled in from the appliance type and size, and you can overwrite them.</p></div>
    <div class="box" style="margin-top:12px"><h2>Your appliances</h2><div id="loads"></div></div>
   </div>
-  <div class="box"><h2>Recommended system</h2><div id="rec"></div>
+  <div class="box"><h2>Recommended system</h2><div id="rec"></div><div id="lprof" style="margin-top:12px"></div>
    <div class="row" style="margin-top:12px"><button class="btn pri" id="xfer">Use this in the solar tool</button></div></div>
  </div>
 </section>
@@ -190,43 +223,85 @@ td.n,th.n{text-align:right}
 </main>
 <script>
 const $=id=>document.getElementById(id),php=n=>"₱"+Math.round(n).toLocaleString("en-US");
-const TABS=[["home","Home"],["tool","Solar tool"],["load","Load calculator"],["roof","Roof mapper"],["roi","ROI simulator"],["yield","Yield monitor"],["projects","Projects"],["contact","Contact"]];
+const TABS=[["home","Home"],["tool","Solar tool"],["parts","Parts 3D"],["panel","Panel builder"],["load","Load calculator"],["roof","Roof mapper"],["roi","ROI simulator"],["yield","Yield monitor"],["projects","Projects"],["contact","Contact"]];
 const S={sel:{mod:"gen500",inv:"auto",bat:"auto",qty:1},UE:{},loads:[],kwp:7.5,inv:6,bat:9.6,panels:15,watts:500,cost:260000};
 const PRE=[["Inverter AC 1 HP",750,8,1],["Refrigerator",150,24,1],["Ceiling fan",65,10,2],["LED lights",60,6,1],["Laptop and monitor",120,8,1],["Wi-Fi router",12,24,1],["TV 55 in",100,5,1],["Water pump",750,1,1]];
 // nav + routing
 $("nav").insertAdjacentHTML("beforeend",TABS.map(t=>`<a href="#${t[0]}" data-t="${t[0]}">${t[1]}</a>`).join(""));
 function route(){const h=(location.hash||"#home").slice(1),id=TABS.some(t=>t[0]===h)?h:"home";
  document.querySelectorAll("section").forEach(s=>s.classList.toggle("on",s.id===id));
- document.querySelectorAll("nav a").forEach(a=>a.classList.toggle("on",a.dataset.t===id));render();if(id!=="yield")stopPlay();if(id==="tool")initEditor();if(id==="roof")initMap();scrollTo(0,0)}
+ document.querySelectorAll("nav a").forEach(a=>a.classList.toggle("on",a.dataset.t===id));render();if(id!=="yield")stopPlay();if(id==="tool")initEditor();if(id==="parts")initParts();if(id==="panel")pnDraw();if(id==="roof")initMap();scrollTo(0,0)}
 addEventListener("hashchange",route);
 document.addEventListener("click",e=>{const g=e.target.closest("[data-go]");if(g)location.hash=g.dataset.go});
 $("homeCards").innerHTML=[["load","Load calculator","List your appliances and get a recommended system size."],["roof","Roof mapper","Outline your roof and see how many panels fit."],["tool","Solar tool","Wire the system and get a materials list."]].map(c=>`<button class="box card" data-go="${c[0]}"><h2>${c[1]}</h2><span style="color:var(--mu)">${c[2]}</span></button>`).join("");
 // load calculator
 $("presets").innerHTML=PRE.map((p,i)=>`<button class="btn" data-p="${i}">+ ${p[0]}</button>`).join("");
 $("presets").onclick=e=>{const i=e.target.dataset.p;if(i!=null){const p=PRE[i];S.loads.push({n:p[0],w:p[1],h:p[2],q:p[3]});calc();render()}};
+const nm_=(t,re)=>{const m=t.match(re);return m?parseFloat(m[1].replace(/,/g,"")):null},LERP=(x,T)=>{if(x<=T[0][0])return T[0][1];for(let i=1;i<T.length;i++)if(x<=T[i][0])return T[i-1][1]+(T[i][1]-T[i-1][1])*(x-T[i-1][0])/(T[i][0]-T[i-1][0]);return T[T.length-1][1]};
+// [pattern, label, fn(text)->[watts, detail], default hours, default window]. Typical running watts, not a model database.
+const APD=[
+[/air ?con|aircon|ac|split type|window type|air conditioner/,"Air conditioner",t=>{const hp=nm_(t,/(\d+(?:\.\d+)?)\s*(?:hp|horse)/)||(nm_(t,/(\d[\d,]*)\s*btu/)?nm_(t,/(\d[\d,]*)\s*btu/)/10000:1),inv=/invert/.test(t);return[Math.round(hp*(inv?700:900)),`${+hp.toFixed(2)} HP, ${inv?"inverter":"non-inverter"}`]},8,["22:00","06:00"]],
+[/refrigerator|fridge|\bref\b|freezer|chiller/,"Refrigerator",t=>{const cu=nm_(t,/(\d+(?:\.\d+)?)\s*(?:cu|cubic)/)||8,inv=/invert/.test(t);return[Math.round((100+5*cu)*(inv?.8:1)),`${cu} cu.ft${inv?", inverter":""}`]},10],
+[/\btv\b|television|smart tv|oled|qled/,"Television",t=>{const inch=nm_(t,/(\d+)\s*(?:"|in\b|inch|inches)/)||43;return[Math.round(LERP(inch,[[24,25],[32,40],[40,55],[43,60],[50,85],[55,100],[65,140],[75,190],[85,250]])),`${inch} inch`]},5,["18:00","23:00"]],
+[/ceiling fan/,"Ceiling fan",()=>[75,"ceiling"],8,["22:00","06:00"]],[/exhaust/,"Exhaust fan",()=>[30,"exhaust"],4],
+[/\bfan\b|electric fan|stand fan|desk fan/,"Electric fan",t=>[/invert/.test(t)?25:55,/invert/.test(t)?"inverter":"stand or desk"],8,["22:00","06:00"]],
+[/water pump|jetmatic|booster|\bpump\b/,"Water pump",t=>{const hp=nm_(t,/(\d+(?:\.\d+)?)\s*hp/)||.5;return[Math.round(hp*1100),`${hp} HP`]},1],
+[/washing|washer/,"Washing machine",t=>{const kg=nm_(t,/(\d+(?:\.\d+)?)\s*kg/)||7;return[Math.round(250+20*kg),`${kg} kg`]},1],
+[/clothes dryer|dryer/,"Clothes dryer",()=>[2000,"typical"],1],
+[/rice cooker/,"Rice cooker",t=>{const l=nm_(t,/(\d+(?:\.\d+)?)\s*(?:l|liter|litre)\b/)||1.8;return[Math.round(100+300*l),`${l} L`]},1],
+[/microwave/,"Microwave oven",()=>[1200,"typical"],.5],[/air ?fryer/,"Air fryer",()=>[1500,"typical"],.5],[/toaster oven|oven toaster/,"Oven toaster",()=>[1200,"typical"],.5],[/electric oven|\boven\b/,"Electric oven",()=>[2000,"typical"],1],
+[/kettle/,"Electric kettle",()=>[1500,"typical"],.3],[/induction|electric stove|hot plate/,"Induction or electric stove",()=>[1800,"typical"],1.5],[/blender/,"Blender",()=>[400,"typical"],.2],[/toaster/,"Toaster",()=>[800,"typical"],.2],[/coffee/,"Coffee maker",()=>[800,"typical"],.5],
+[/water heater|shower heater|heater/,"Water heater",()=>[3500,"instant shower type"],.5],[/dispenser/,"Water dispenser",t=>[/hot/.test(t)?350:100,/hot/.test(t)?"hot and cold":"cold only"],6],
+[/desktop|\bpc\b|gaming/,"Desktop computer",()=>[250,"typical"],8],[/laptop|notebook/,"Laptop",()=>[65,"typical"],6],[/monitor/,"Monitor",()=>[30,"typical"],8],[/router|modem|wifi|wi-fi/,"Router or modem",()=>[12,"typical"],24],[/printer/,"Printer",()=>[30,"typical"],.5],
+[/charger|phone/,"Phone charger",()=>[10,"typical"],3],[/cctv|camera|dvr|nvr/,"CCTV",()=>[40,"typical"],24],[/playstation|xbox|console|nintendo/,"Game console",()=>[150,"typical"],3],[/speaker|sound|stereo/,"Sound system",()=>[50,"typical"],3],
+[/vacuum/,"Vacuum cleaner",()=>[1200,"typical"],.5],[/\biron\b|flat iron/,"Flat iron",()=>[1000,"typical"],.5],[/hair ?dryer|blower/,"Hair dryer",()=>[1500,"typical"],.2],[/dehumidifier/,"Dehumidifier",()=>[300,"typical"],6],[/dishwasher/,"Dishwasher",()=>[1500,"typical"],1],
+[/light|bulb|lamp|\bled\b/,"Light",t=>[9,"LED bulb"],5,["18:00","23:00"]]];
+function detect(text){const t=text.toLowerCase(),db=APD.find(r=>r[0].test(t)),ex=t.match(/(\d+(?:\.\d+)?)\s*(k?w)(?:atts?)?\b/);
+ if(ex)return{w:Math.round(parseFloat(ex[1])*(ex[2]==="kw"?1000:1)),label:db?db[1]:"Your text",detail:"",stated:true,db};
+ if(db){const r=db[2](t);return{w:r[0],label:db[1],detail:r[1],db}}return null}
+let caT;$("caName").oninput=()=>{clearTimeout(caT);caT=setTimeout(caDetect,250)};
+$("caW").oninput=()=>{$("caW").dataset.auto="0"};
+$("caH").oninput=()=>{$("caH").dataset.u="1";$("caS").value="";$("caE").value=""};
+[$("caS"),$("caE")].forEach(x=>x.oninput=()=>{const h=hrsOf($("caS").value,$("caE").value);if(h!=null)$("caH").value=h});
+function caDetect(){const v=$("caName").value.trim(),d=detect(v),W=$("caW"),N=$("caNote");
+ if(!d){N.textContent=v?"I could not recognise that. Type the watts from the nameplate or manual.":"Type a name, brand, size or rating. The watts are filled in from the appliance type and size, and you can overwrite them.";return}
+ if(!W.value||W.dataset.auto==="1"){W.value=d.w;W.dataset.auto="1"}
+ const db=d.db;if(db&&!$("caS").value&&!$("caE").value&&$("caH").dataset.u!=="1"){$("caH").value=db[3];if(db[4]){$("caS").value=db[4][0];$("caE").value=db[4][1]}}
+ N.textContent=d.stated?`Using the ${d.w} W written in the name.`:`Detected ${d.label.toLowerCase()} (${d.detail}): about ${d.w} W while running. This is a typical value for that type and size, not the exact model, so check the nameplate.`}
+$("caAdd").onclick=()=>{const n=$("caName").value.trim(),w=+$("caW").value,q=Math.max(1,Math.round(+$("caQ").value||1)),s=$("caS").value,e=$("caE").value,h=hrsOf(s,e)??Math.max(0,+$("caH").value||0);
+ if(!n||!(w>0)){$("caNote").textContent="Enter a name and the watts, or let it detect them from the name.";return}
+ S.loads.push(Object.assign({n,w,h,q},s&&e?{s,e}:{}));["caName","caW","caS","caE"].forEach(id=>{$(id).value="";delete $(id).dataset.auto});$("caQ").value=1;$("caH").value=4;delete $("caH").dataset.u;$("caNote").textContent="Added.";calc();render()};
 $("loads").onclick=e=>{const d=e.target.dataset.d;if(d!=null){S.loads.splice(+d,1);calc();render()}};
-$("loads").oninput=e=>{const [i,k]=e.target.dataset.f.split(".");S.loads[i][k]=Math.max(0,+e.target.value||0);calc();$("rec").innerHTML=recHTML()};
+$("loads").oninput=e=>{const [i,k]=e.target.dataset.f.split("."),l=S.loads[i],q=x=>document.querySelector(`[data-f="${i}.${x}"]`);
+ if(k==="s"||k==="e"){l[k]=e.target.value;const h=hrsOf(l.s,l.e);if(h!=null){l.h=h;q("h").value=h}}else{l[k]=Math.max(0,+e.target.value||0);if(k==="h"&&lw(l)){delete l.s;delete l.e;q("s").value="";q("e").value=""}}loadsUpd()};
 let R={kwh:0,peak:0};
-function calc(){R.kwh=S.loads.reduce((a,l)=>a+l.w*l.h*l.q,0)/1000;R.peak=S.loads.reduce((a,l)=>a+l.w*l.q,0)/1000;
- R.inv=Math.max(1,Math.ceil(R.peak*1.25));R.pv=R.kwh/(4.3*.75);R.bat=R.kwh*.4/.8}
-function recHTML(){return S.loads.length?`<table><tr><td>Daily use</td><td class="n"><b>${R.kwh.toFixed(2)} kWh</b></td></tr><tr><td>Peak load</td><td class="n">${R.peak.toFixed(2)} kW</td></tr><tr><td>Inverter</td><td class="n"><b>${R.inv} kW</b></td></tr><tr><td>Solar array</td><td class="n"><b>${R.pv.toFixed(2)} kWp</b></td></tr><tr><td>Battery</td><td class="n"><b>${R.bat.toFixed(1)} kWh</b></td></tr></table>`:`<p style="color:var(--mu)">Add an appliance to see the recommended system.</p>`}
+const tm=s=>{const a=s.split(":");return +a[0]*60+ +a[1]},hrsOf=(s,e)=>{if(!s||!e)return null;return(((tm(e)-tm(s)+1440)%1440)||1440)/60},lw=l=>l.s&&l.e,esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function lkw(l,h){const a=tm(l.s),b=tm(l.e),seg=a<b?[[a,b]]:a===b?[[0,1440]]:[[a,1440],[0,b]];let m=0;seg.forEach(g=>{m+=Math.max(0,Math.min(g[1],h*60+60)-Math.max(g[0],h*60))});return l.w*l.q*m/60/1000}
+function calc(){const W=S.loads.filter(lw),U=S.loads.filter(l=>!lw(l)),uk=U.reduce((a,l)=>a+l.w*l.h*l.q,0)/1000,up=U.reduce((a,l)=>a+l.w*l.q,0)/1000;
+ R.kwh=S.loads.reduce((a,l)=>a+l.w*l.h*l.q,0)/1000;R.hr=Array.from({length:24},(_,h)=>W.reduce((a,l)=>a+lkw(l,h),0));R.uavg=uk/24;
+ R.peak=Math.max(0,...R.hr)+up;R.night=R.hr.reduce((a,v,h)=>a+(h>=7&&h<17?0:v),0)+.4*uk;
+ R.inv=Math.max(1,Math.ceil(R.peak*1.25));R.pv=R.kwh/(4.3*.75);R.bat=R.night/.8}
+function profHTML(){if(!S.loads.length)return"";const mx=Math.max(.1,...R.hr.map(v=>v+R.uavg)),bw=14;
+ return`<h2 style="font-size:15px">Load by hour</h2><svg viewBox="0 0 360 140" style="width:100%;height:auto"><rect x="${30+6*bw}" y="6" width="${12*bw}" height="104" fill="#f2a900" opacity=".08"/>${R.hr.map((v,h)=>{const x=30+h*bw,u=R.uavg/mx*100,t=v/mx*100;return`<rect x="${x+1}" y="${110-u}" width="${bw-2}" height="${u}" fill="#8e9bb5" opacity=".5"/><rect x="${x+1}" y="${110-u-t}" width="${bw-2}" height="${t}" fill="#f2a900"><title>${h}:00 about ${(v+R.uavg).toFixed(2)} kW</title></rect>${h%3===0?`<text x="${x+bw/2}" y="124" fill="#8e9bb5" font-size="10" text-anchor="middle">${h}</text>`:""}`}).join("")}<text x="26" y="14" fill="#8e9bb5" font-size="10" text-anchor="end">${mx.toFixed(1)}</text><text x="26" y="110" fill="#8e9bb5" font-size="10" text-anchor="end">0</text></svg><p style="color:var(--mu);font-size:13px;margin:4px 0 0">kW by hour of day. The shaded band is daylight. Grey is appliances with no set time, spread evenly. Battery size follows the use outside 7:00 to 17:00.</p>`}
+function loadsUpd(){calc();$("rec").innerHTML=recHTML();$("lprof").innerHTML=profHTML()}
+function recHTML(){return S.loads.length?`<table><tr><td>Daily use</td><td class="n"><b>${R.kwh.toFixed(2)} kWh</b></td></tr><tr><td>Peak load</td><td class="n">${R.peak.toFixed(2)} kW</td></tr>${S.loads.some(lw)?`<tr><td>Evening and night use</td><td class="n">${R.night.toFixed(2)} kWh</td></tr>`:""}<tr><td>Inverter</td><td class="n"><b>${R.inv} kW</b></td></tr><tr><td>Solar array</td><td class="n"><b>${R.pv.toFixed(2)} kWp</b></td></tr><tr><td>Battery</td><td class="n"><b>${R.bat.toFixed(1)} kWh</b></td></tr></table>`:`<p style="color:var(--mu)">Add an appliance to see the recommended system.</p>`}
 $("xfer").onclick=()=>{if(!S.loads.length)return;$("mkwh").value=Math.max(1,Math.round(R.kwh*30));location.hash="tool";runSim()};
 $("panelQty").oninput=e=>setPanels(+e.target.value||1);
 // tool
 const WB=["Electrical","PV sizing","Mounting","Warnings"];let wbi=0;
 $("wbTabs").innerHTML=WB.map((t,i)=>`<button class="btn" data-w="${i}">${t}</button>`).join("");
 $("wbTabs").onclick=e=>{if(e.target.dataset.w!=null){wbi=+e.target.dataset.w;render()}};
-const UD={panel_per_watt:7.5,inverter_per_kw:8500,bat_kwh:8500,rail_4_2m:650,roof_hook:120,clamp:45,pv_cable_per_m:45,ac_cable_per_m:85,bat_cable_per_m:350,prot_pv_dc_breaker:1800,prot_ac_breaker:900,prot_spd_dc:1300,prot_spd_ac:1100,prot_battery_mccb:4500,prot_enclosure_misc:1400,conduit_fittings:2200,grounding_kit:1500,lugs_glands_ties:1000,dc_isolator:1500,combiner_box:3200,kwh_meter:3500,dist_board:2800};
+const UD={panel_per_watt:7.5,inverter_per_kw:8500,bat_kwh:8500,rail_4_2m:650,roof_hook:120,clamp:45,pv_cable_per_m:45,ac_cable_per_m:85,bat_cable_per_m:350,prot_pv_dc_breaker:1800,prot_ac_breaker:900,prot_spd_dc:1300,prot_spd_ac:1100,prot_battery_mccb:4500,prot_enclosure_misc:1400,conduit_fittings:2200,grounding_kit:1500,lugs_glands_ties:1000,dc_isolator:1500,combiner_box:3200,kwh_meter:3500,dist_board:2800,prot_mcb1:350,prot_mcb3:1100,prot_mcb4:1500,prot_rcd2:1900,prot_rcd4:3200,prot_rcdb:7500,prot_rcbo:1600,ctc2:1600,ctc4:3000,dc_fuse:550,ats2:3800,ac_iso2:850};
 function bomRows(){const U=PRICE(),p=S.panels,w=S.watts,rows=Math.ceil(p/12),rails=Math.ceil(p*2.26/4.2),hooks=Math.ceil(p*1.5),R={pv:E.pvD,ac:E.acD,bat:E.batD};
  const L=[["Solar PV modules",p+" pcs",w*U.panel_per_watt,p*w*U.panel_per_watt,"panel_per_watt",w],["Inverter",S.inv+" kW",U.inverter_per_kw,S.inv*U.inverter_per_kw,"inverter_per_kw",1]];
  if(S.bat>0)L.push(["Battery storage",S.bat+" kWh",U.bat_kwh,S.bat*U.bat_kwh,"bat_kwh",1]);
  [["Mounting rails",rails,"rail_4_2m"],["Roof hooks",hooks,"roof_hook"],["Mid clamps",Math.max(0,p-rows)*2,"clamp"],["End clamps",rows*4,"clamp"]].forEach(x=>L.push([x[0],x[1]+" pcs",U[x[2]],x[1]*U[x[2]],x[2],1]));
- const cnt=ty=>ED.ready?ED.nodes.filter(n=>n.type===ty).length:0;let ex=0;
+ const cnt=ty=>ED.ready?ED.nodes.filter(n=>n.type===ty).length:0;let ex=0;const na=ED.ready?Math.max(1,arrays().length):1;
  [[`PV DC breaker (${E.pvB} A)`,"prot_pv_dc_breaker","pvb"],[`AC breaker (${E.aB} A)`,"prot_ac_breaker","acb"],["DC surge protector","prot_spd_dc","spdd"],["AC surge protector","prot_spd_ac","spda"]].forEach(x=>{const n=Math.max(1,cnt(x[2]));ex+=(n-1)*U[x[1]];L.push([x[0],n+" pcs",U[x[1]],n*U[x[1]],x[1],1])});
  const nm=cnt("bmc"),mp=U.prot_battery_mccb;if(nm){ex+=nm*mp;L.push([`Battery DC MCCB${E.bB?" ("+E.bB+" A)":""}`,nm+" pcs",mp,nm*mp,"prot_battery_mccb",1])}
  [["DC isolator switch","dc_isolator","iso"],["PV combiner box","combiner_box","cmb"],["kWh meter","kwh_meter","mtr"],["Distribution board","dist_board","mdb"]].forEach(x=>{const n=cnt(x[2]);if(n){const pr=U[x[1]];ex+=n*pr;L.push([x[0],n+" pcs",pr,n*pr,x[1],1])}});
  [["Enclosure and busbars","prot_enclosure_misc"],["Conduit and fittings","conduit_fittings"],["Grounding kit","grounding_kit"],["Lugs, glands, ties","lugs_glands_ties"]].forEach(x=>L.push([x[0],"1 lot",U[x[1]],U[x[1]],x[1],1]));S.extras=Math.round(ex);
- L.push([`PV DC cable (${E.pvW.t})`,R.pv*2+" m",U.pv_cable_per_m,R.pv*2*U.pv_cable_per_m,"pv_cable_per_m",1],[`AC cable (${E.aW.t})`,R.ac*3+" m",U.ac_cable_per_m,R.ac*3*U.ac_cable_per_m,"ac_cable_per_m",1]);
+ L.push([`PV DC cable (${E.pvW.t})`,R.pv*2*na+" m",U.pv_cable_per_m,R.pv*2*na*U.pv_cable_per_m,"pv_cable_per_m",1],[`AC cable (${E.aW.t})`,R.ac*3+" m",U.ac_cable_per_m,R.ac*3*U.ac_cable_per_m,"ac_cable_per_m",1]);
  if(S.bat>0)L.push([`Battery cable (${E.bW.t})`,R.bat*2+" m",U.bat_cable_per_m,R.bat*2*U.bat_cable_per_m,"bat_cable_per_m",1]);return L}
 
 // electrical design (ported from the first tool)
@@ -364,7 +439,7 @@ function xpShow(){$("xpWrap").style.display=$("topo").value==="hybrid-export"?""
 $("topo").addEventListener("change",xpShow);xpShow();
 // simulation
 function applySim(d){const s=d.summary;S.sim=d;S.U=d.assumptions.unit_prices;S.manual=false;Object.assign(S,{kwp:s.system_kw,inv:s.inverter_kw,bat:s.battery_kwh,panels:s.panel_count,watts:s.panel_watts,cost:s.total_cost_php})}
-async function runSim(retry){const m=$("simMsg"),b={topology:$("topo").value,monthly_kwh:+$("mkwh").value,lat:+$("lat").value,lon:+$("lon").value,panel_watts:S.watts,tilt:S.tilt==null?15:S.tilt,azimuth:S.az==null?180:S.az,extra_materials_php:Math.round(S.extras||0),pv_run_m:E.pvD,ac_run_m:E.acD,bat_run_m:E.batD,tariff_escalation_pct:+$("esc").value,degradation_pct:+$("deg").value,export_priority:$("topo").value==="hybrid-export"?$("xprio").value:"battery_first"};
+async function runSim(retry){const m=$("simMsg"),b={topology:$("topo").value,monthly_kwh:+$("mkwh").value,lat:+$("lat").value,lon:+$("lon").value,panel_watts:S.watts,tilt:S.tilt==null?15:S.tilt,azimuth:S.az==null?180:S.az,extra_materials_php:Math.round(S.extras||0),pv_run_m:E.pvD*(ED.ready?Math.max(1,arrays().length):1),ac_run_m:E.acD,bat_run_m:E.batD,tariff_escalation_pct:+$("esc").value,degradation_pct:+$("deg").value,export_priority:$("topo").value==="hybrid-export"?$("xprio").value:"battery_first"};
  if($("tariff").value!=="")b.retail_rate=+$("tariff").value;if(S.manual)b.system_kw=S.panels*S.watts/1000;if(S.faces&&S.faces.length)b.faces=S.faces;
  {const iv=byId(CAT.inv,S.sel.inv),bt=byId(CAT.bat,S.sel.bat);if(iv)b.inverter_kw=iv.kw;if(S.sel.bat==="none")b.battery_kwh=0;else if(bt)b.battery_kwh=+(bt.kwh*S.sel.qty).toFixed(2);const po=sendPO();if(Object.keys(po).length)b.price_overrides=po}
  m.textContent="Running simulation…";let r,d;
@@ -435,12 +510,14 @@ const mkTex=(w,h,fn)=>{const c=document.createElement("canvas");c.width=w;c.heig
 const txtTex=(w,h,lines,bg)=>mkTex(w,h,(c,W,H)=>{if(bg){c.fillStyle=bg;c.fillRect(0,0,W,H)}c.textAlign="center";c.textBaseline="middle";lines.forEach((l,i)=>{c.fillStyle=l[2]||"#111";c.font="bold "+l[1]+"px sans-serif";c.fillText(l[0],W/2,H*(i+1)/(lines.length+1))})});
 const decal=(g,w,h,t,x,y,z)=>{const k=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:t,transparent:true}));k.position.set(x,y,z);g.add(k);return k};
 let CELL=null;
-const cellTex=()=>CELL||(CELL=mkTex(120,200,(c,W,H)=>{c.fillStyle="#0d1f45";c.fillRect(0,0,W,H);const cw=W/6,ch=H/10;for(let i=0;i<6;i++)for(let j=0;j<10;j++){c.fillStyle="#1d4190";c.fillRect(i*cw+2,j*ch+2,cw-4,ch-4);c.fillStyle="rgba(190,205,235,.55)";c.fillRect(i*cw+cw/3,j*ch+2,1,ch-4);c.fillRect(i*cw+2*cw/3,j*ch+2,1,ch-4)}}));
+const cellTex=R=>(R=R||10,CELL&&CELL[R])||((CELL=CELL||{})[R]=mkTex(120,200,(c,W,H)=>{c.fillStyle="#0d1f45";c.fillRect(0,0,W,H);const cw=W/6,ch=H/R;for(let i=0;i<6;i++)for(let j=0;j<R;j++){c.fillStyle="#1d4190";c.fillRect(i*cw+2,j*ch+2,cw-4,ch-4);c.fillStyle="rgba(190,205,235,.55)";c.fillRect(i*cw+cw/3,j*ch+2,1,ch-4);c.fillRect(i*cw+2*cw/3,j*ch+2,1,ch-4)}}));
 // solar array: framed modules with cell grid, tilted on a rail-and-leg rack
-function mPV(){const g=new THREE.Group(),n=S.panels,cols=Math.min(n,6),rows=Math.ceil(n/6),sx=1.15,sz=2.0,fr=M(0xc3c9d4,{metalness:.35,roughness:.4}),gl=M(0xffffff,{map:cellTex(),roughness:.25,metalness:.3}),lg=M(0x8a93a3,{metalness:.3}),fg=new THREE.BoxGeometry(1.1,.05,1.9),gg=new THREE.PlaneGeometry(1.0,1.8),W=cols*sx,tl=.22,yc=.75,hz=.95*Math.cos(tl),dy=.95*Math.sin(tl);
- for(let i=0;i<n;i++){const c=i%6,r=Math.floor(i/6),p=new THREE.Group(),a=new THREE.Mesh(fg,fr),b=new THREE.Mesh(gg,gl);b.rotation.x=-Math.PI/2;b.position.y=.027;p.add(a);p.add(b);p.position.set((c-(cols-1)/2)*sx,yc,(r-(rows-1)/2)*sz);p.rotation.x=tl;g.add(p)}
- for(let r=0;r<rows;r++){const z0=(r-(rows-1)/2)*sz;[[z0+hz,yc-dy],[z0-hz,yc+dy]].forEach(a=>{const z=a[0],y=a[1]-.04;bx(g,W,.05,.05,lg,0,y,z);[-W/2+.12,W/2-.12].concat(cols>3?[0]:[]).forEach(x=>bx(g,.05,y,.05,lg,x,y/2,z))})}
- return{g,h:1.15}}
+const pvv=(o,k)=>o&&o[k]!=null?o[k]:k==="tilt"?(S.tilt==null?15:S.tilt):(S.az==null?180:S.az);
+function mPV(o){const g=new THREE.Group(),A=new THREE.Group(),n=Math.max(1,(o&&o.n)||S.panels),mod=byId(CAT.mod,S.sel.mod)||{l:2.278,wd:1.134,w:S.watts},L=mod.l,Wd=mod.wd,cols=Math.min(n,6),rows=Math.ceil(n/6),sx=Wd+.02,tl=Math.max(0,Math.min(45,pvv(o,"tilt")))*Math.PI/180,alt=Math.max(20,90-Math.abs(siteLat())-23.44)*Math.PI/180,sz=L*(Math.cos(tl)+Math.sin(tl)/Math.tan(alt)),
+ fr=M(0xc3c9d4,{metalness:.35,roughness:.4}),gl=M(0xffffff,{map:cellTex(mod.w>470?12:10),roughness:.25,metalness:.3}),lg=M(0x8a93a3,{metalness:.3}),fg=new THREE.BoxGeometry(Wd,.035,L),gg=new THREE.PlaneGeometry(Wd-.06,L-.06),W=cols*sx,yc=.5+L/2*Math.sin(tl),hz=L/2*Math.cos(tl),dy=L/2*Math.sin(tl);
+ for(let i=0;i<n;i++){const c=i%6,r=Math.floor(i/6),p=new THREE.Group(),a=new THREE.Mesh(fg,fr),b=new THREE.Mesh(gg,gl);b.rotation.x=-Math.PI/2;b.position.y=.02;p.add(a);p.add(b);p.position.set((c-(cols-1)/2)*sx,yc,(r-(rows-1)/2)*sz);p.rotation.x=tl;A.add(p)}
+ for(let r=0;r<rows;r++){const z0=(r-(rows-1)/2)*sz;[[z0+hz,yc-dy],[z0-hz,yc+dy]].forEach(a=>{const z=a[0],y=a[1]-.04;bx(A,W,.05,.05,lg,0,y,z);[-W/2+.12,W/2-.12].concat(cols>3?[0]:[]).forEach(x=>bx(A,.05,y,.05,lg,x,y/2,z))})}
+ A.rotation.y=(180-pvv(o,"az"))*Math.PI/180;g.add(A);return{g,h:yc+dy+.15}}
 // hybrid inverter: finned enclosure, LCD, status LEDs, buttons, cable glands
 function mInv(){const g=new THREE.Group(),body=M(0xe6eaf0,{roughness:.5,metalness:.2}),dk=M(0x1c2433,{roughness:.4}),fin=M(0xb9c0cc,{metalness:.35,roughness:.4}),gl=M(0x222831);
  [-.55,.55].forEach(x=>bx(g,.16,.1,.3,dk,x,.05,0));
@@ -517,20 +594,21 @@ function mHome(){const g=new THREE.Group(),wl=M(0xeadfce,{roughness:.9,metalness
  bx(g,.3,.42,.12,M(0xcfd5df,{metalness:.2}),.95,.8,1.37);
  cyl(g,.04,2.2,M(0x9aa3b2,{metalness:.4,roughness:.4}),.95,1.6,1.42);cyl(g,.07,.1,M(0x2b3039),.95,2.72,1.42);
  return{g,h:2.8}}
-const TY={pv:["PV array"],inv:["Inverter"],bat:["Battery"],pvb:["PV DC breaker"],acb:["AC breaker"],bmc:["Battery MCCB"],spdd:["DC surge protector"],spda:["AC surge protector"],iso:["DC isolator"],cmb:["PV combiner box"],mtr:["kWh meter"],mdb:["Distribution board"],home:["Home"]};
-const BUILD={pv:mPV,inv:mInv,bat:mBat,home:mHome,iso:mIso,cmb:mCmb,mtr:mMtr,mdb:mMdb,
+function mWall(o){o=o||{l:4,h:2.6,t:.2};const g=new THREE.Group();bx(g,o.l,o.h,o.t,M(0xd9d4ca,{roughness:.95,metalness:0}),0,o.h/2,0);bx(g,o.l+.02,.12,o.t+.04,M(0x8f8a80,{roughness:.9,metalness:0}),0,.06,0);bx(g,o.l+.04,.06,o.t+.06,M(0xb9b4a8,{roughness:.9,metalness:0}),0,o.h+.03,0);return{g,h:o.h+.06}}
+const TY={pv:["PV array"],inv:["Inverter"],bat:["Battery"],pvb:["PV DC breaker"],acb:["AC breaker"],bmc:["Battery MCCB"],spdd:["DC surge protector"],spda:["AC surge protector"],iso:["DC isolator"],cmb:["PV combiner box"],mtr:["kWh meter"],mdb:["Distribution board"],home:["Home"],wall:["Wall"]};
+const BUILD={wall:mWall,pv:mPV,inv:mInv,bat:mBat,home:mHome,iso:mIso,cmb:mCmb,mtr:mMtr,mdb:mMdb,
  pvb:()=>mBrk({c:0xe5484d,p:2,s:1,t:"PV DC 2P"}),acb:()=>mBrk({c:0xf2a900,p:2,s:1,t:"AC 2P"}),bmc:()=>mBrk({c:0xb86bff,p:2,s:1.5,t:"BATT MCCB"}),
  spdd:()=>mSpd({c:0x4ea1ff,t:"DC SPD"}),spda:()=>mSpd({c:0x2fb8a6,t:"AC SPD"})};
 // ---- end part models ----
-const LIB={Breakers:[["pvb","PV DC breaker","prot_pv_dc_breaker"],["acb","AC breaker","prot_ac_breaker"],["bmc","Battery DC MCCB","prot_battery_mccb"],["spdd","DC surge protector","prot_spd_dc"],["spda","AC surge protector","prot_spd_ac"]],Switches:[["iso","DC isolator switch","dc_isolator"],["cmb","PV combiner box","combiner_box"]],Power:[["mtr","kWh meter","kwh_meter"],["mdb","Distribution board","dist_board"]]};
+const LIB={Breakers:[["pvb","PV DC breaker","prot_pv_dc_breaker"],["acb","AC breaker","prot_ac_breaker"],["bmc","Battery DC MCCB","prot_battery_mccb"],["spdd","DC surge protector","prot_spd_dc"],["spda","AC surge protector","prot_spd_ac"]],Switches:[["iso","DC isolator switch","dc_isolator"],["cmb","PV combiner box","combiner_box"]],Power:[["mtr","kWh meter","kwh_meter"],["mdb","Distribution board","dist_board"]],Solar:[["pv","PV array (own wires)",null,null]],Structure:[["wall","Wall 4 m",null,{l:4,h:2.6,t:.2}],["wall","Wall 2 m",null,{l:2,h:2.6,t:.2}],["wall","Wall 8 m",null,{l:8,h:2.6,t:.2}],["wall","Low wall 4 m",null,{l:4,h:1,t:.15}]]};
 function drawLib(){const U=PRICE(),t=ED.lt||"Breakers";
- $("lib").innerHTML=`<h2>Hardware library</h2><div class="tabs">${Object.keys(LIB).map(k=>`<button class="btn${k===t?" on":""}" data-lt="${k}">${k}</button>`).join("")}</div>`+LIB[t].map(x=>`<button class="btn${ED.place===x[0]?" on":""}" data-add="${x[0]}">${x[1]}<small>${php(U[x[2]]??UD[x[2]])}</small></button>`).join("")+`<p class="todo" style="margin-top:8px">Pick a part, then click the floor of the 3D view to place it.</p>`}
+ $("lib").innerHTML=`<h2>Hardware library</h2><div class="tabs">${Object.keys(LIB).map(k=>`<button class="btn${k===t?" on":""}" data-lt="${k}">${k}</button>`).join("")}</div>`+LIB[t].map((x,i)=>`<button class="btn${ED.place===x[0]&&ED.wo===(x[3]||null)?" on":""}" data-add="${x[0]}" data-k="${i}">${x[1]}<small>${x[2]?php(U[x[2]]??UD[x[2]]):x[0]==="pv"?"by panel count":"scene only"}</small></button>`).join("")+`<p class="todo" style="margin-top:8px">Pick a part, then click the floor of the 3D view to place it. Walls are in the Structure tab: select one to set its size. Drop or drag hardware onto a wall face to mount it, then drag up or down to set its height. Add a second PV array from the Solar tab: it gets its own breaker and wires.</p>`}
 function lbl(txt,y){const c=document.createElement("canvas");c.width=256;c.height=64;const g=c.getContext("2d");g.fillStyle="#e8edf7";g.font="26px sans-serif";g.textAlign="center";g.fillText(txt,128,40);
  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthTest:false}));sp.scale.set(2.6,.65,1);sp.position.y=y;sp.raycast=()=>{};return sp}
 const disp=o=>o.traverse(c=>{if(c.geometry)c.geometry.dispose();if(c.material)[].concat(c.material).forEach(m=>m.dispose())});
-function dress(n,b){const g=b.g;g.position.set(n.x,0,n.z);g.rotation.y=n.r*Math.PI/2;g.add(lbl(TY[n.type][0],b.h+.6));g.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true}});ED.t.sc.add(g);n.mesh=g;n.h=b.h}
-function mkNode(type,x,z,id,r){const n={id,type,x,z,r:r||0};dress(n,BUILD[type]());ED.nodes.push(n);return n}
-const anchor=n=>new THREE.Vector3(n.x,n.h+.05,n.z);
+function dress(n,b){const g=b.g;g.updateMatrixWorld(true);n.d=-Math.min(0,new THREE.Box3().setFromObject(g).min.z);g.position.set(n.x,0,n.z);g.rotation.y=n.r*Math.PI/2;if(n.type!=="wall")g.add(lbl(n.type==="pv"&&n.o?`${n.o.name}: ${n.o.n} panels`:TY[n.type][0],b.h+.6));g.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true}});ED.t.sc.add(g);n.mesh=g;n.h=b.h}
+function mkNode(type,x,z,id,r,o,m){const n={id,type,x,z,r:r||0};if(o)n.o=o;else if(type==="wall")n.o={l:4,h:2.6,t:.2};else if(type==="pv")n.o={n:S.panels,name:"Array A"};dress(n,BUILD[type](n.o));ED.nodes.push(n);if(m){n.m=m;applyMount(n)}return n}
+const anchor=n=>new THREE.Vector3(n.x,n.h+(n.m?n.m.y:0)+.05,n.z);
 function wmesh(w){const a=ED.nodes.find(n=>n.id===w.a),b=ED.nodes.find(n=>n.id===w.b);if(!a||!b)return;
  const k=ED.wires.filter(x=>x.a===w.a&&x.b===w.b||x.a===w.b&&x.b===w.a).indexOf(w),A=anchor(a),B=anchor(b),h=Math.max(A.y,B.y)+1.1+k*.3;A.x+=k*.1;B.x+=k*.1;
  const P=[A,new THREE.Vector3(A.x,h,A.z),new THREE.Vector3(B.x,h,B.z),B],cp=new THREE.CurvePath();for(let i=0;i<3;i++)cp.add(new THREE.LineCurve3(P[i],P[i+1]));
@@ -538,32 +616,58 @@ function wmesh(w){const a=ED.nodes.find(n=>n.id===w.a),b=ED.nodes.find(n=>n.id==
  const m=new THREE.Mesh(new THREE.TubeGeometry(cp,24,.05,5,false),new THREE.MeshStandardMaterial({color:WK[w.k],emissive:WK[w.k],emissiveIntensity:.25}));m.userData.wire=w;ED.t.sc.add(m);w.m=m}
 const rewire=()=>ED.wires.forEach(wmesh);
 const glow=(n,c)=>{if(n)n.mesh.traverse(o=>{if(o.isMesh)[].concat(o.material).forEach(m=>{if(m.emissive)m.emissive.setHex(c)})})};
-function sel(n){if(ED.sel&&ED.sel!==(ED.pend&&ED.pend.id))glow(ED.nodes.find(x=>x.id===ED.sel),0);ED.sel=n?n.id:null;glow(n,0x2a2a2a)}
-function snap(){return JSON.stringify({n:ED.nodes.map(n=>({id:n.id,t:n.type,x:n.x,z:n.z,r:n.r})),w:ED.wires.map(w=>({a:w.a,b:w.b,k:w.k}))})}
+function sel(n){if(ED.sel&&ED.sel!==(ED.pend&&ED.pend.id))glow(ED.nodes.find(x=>x.id===ED.sel),0);ED.sel=n?n.id:null;glow(n,0x2a2a2a);wallUI()}
+function snap(){return JSON.stringify({n:ED.nodes.map(n=>({id:n.id,t:n.type,x:n.x,z:n.z,r:n.r,o:n.o,m:n.m})),w:ED.wires.map(w=>({a:w.a,b:w.b,k:w.k}))})}
 function push(){ED.hist.push(snap());if(ED.hist.length>50)ED.hist.shift();upd()}
 function clearScene(){ED.nodes.forEach(n=>{ED.t.sc.remove(n.mesh);disp(n.mesh)});ED.wires.forEach(w=>{if(w.m){ED.t.sc.remove(w.m);w.m.geometry.dispose()}});ED.nodes=[];ED.wires=[];ED.sel=ED.pend=null}
-function loadSnap(s){clearScene();const o=JSON.parse(s);o.n.forEach(n=>mkNode(n.t,n.x,n.z,n.id,n.r));o.w.forEach(w=>ED.wires.push({a:w.a,b:w.b,k:w.k}));rewire();upd()}
+function loadSnap(s){clearScene();const o=JSON.parse(s);o.n.forEach(n=>mkNode(n.t,n.x,n.z,n.id,n.r,n.o));o.w.forEach(w=>ED.wires.push({a:w.a,b:w.b,k:w.k}));o.n.forEach(n=>{if(n.m){const k=ED.nodes.find(x=>x.id===n.id);k.m=n.m;applyMount(k)}});rewire();{const A=arrays(),t=A.reduce((a,x)=>a+x.o.n,0);if(A.length&&t!==S.panels)setPanels(t)}upd()}
 function undo(){if(!ED.ready)return;const s=ED.hist.pop();if(s)loadSnap(s)}
-function rmNode(id){const n=ED.nodes.find(x=>x.id===id);if(!n)return;ED.t.sc.remove(n.mesh);disp(n.mesh);ED.nodes=ED.nodes.filter(x=>x!==n);ED.wires=ED.wires.filter(w=>{if(w.a===id||w.b===id){w.m&&ED.t.sc.remove(w.m);return false}return true});rewire()}
+function rmNode(id){const n=ED.nodes.find(x=>x.id===id);if(!n)return;if(n.type==="wall")kids(n).forEach(c=>{c.m=null;c.mesh.position.y=0;c.mesh.rotation.y=c.r*Math.PI/2});ED.t.sc.remove(n.mesh);disp(n.mesh);ED.nodes=ED.nodes.filter(x=>x!==n);ED.wires=ED.wires.filter(w=>{if(w.a===id||w.b===id){w.m&&ED.t.sc.remove(w.m);return false}return true});rewire();if(n.type==="pv"){const A=arrays(),t=A.reduce((a,x)=>a+x.o.n,0);if(A.length&&t!==S.panels)setPanels(t)}}
+const MOUNT=["inv","bat","pvb","acb","bmc","spdd","spda","iso","cmb","mtr","mdb"],arrays=()=>ED.nodes.filter(n=>n.type==="pv"),kids=w=>ED.nodes.filter(c=>c.m&&c.m.w===w.id),edKey=()=>S.panels+"|"+(S.bat>0)+"|"+S.tilt+"|"+S.az+"|"+S.sel.mod;
+const mPose=(w,m,d)=>{const t=w.o.t/2,th=w.r*Math.PI/2,c=Math.cos(th),s=Math.sin(th),lz=m.s*(t+d+.01);return{x:w.x+m.u*c+lz*s,z:w.z-m.u*s+lz*c,y:m.y,ry:th+(m.s<0?Math.PI:0)}};
+const mFor=(wh,h)=>{const o=wh.w.o;return{w:wh.w.id,u:Math.max(-o.l/2+.1,Math.min(o.l/2-.1,wh.u)),y:Math.max(0,Math.min(Math.max(0,o.h-h),wh.y-h/2)),s:wh.side}};
+function applyMount(n){const w=ED.nodes.find(x=>x.id===n.m.w);if(!w){n.m=null;return}const p=mPose(w,n.m,n.d||0);n.x=p.x;n.z=p.z;n.mesh.position.set(p.x,p.y,p.z);n.mesh.rotation.y=p.ry}
+function follow(w){kids(w).forEach(c=>{const o=w.o;c.m.u=Math.max(-o.l/2+.1,Math.min(o.l/2-.1,c.m.u));c.m.y=Math.max(0,Math.min(Math.max(0,o.h-c.h),c.m.y));applyMount(c);ED.wires.filter(x=>x.a===c.id||x.b===c.id).forEach(wmesh)})}
+function rebuildPV(n){ED.t.sc.remove(n.mesh);disp(n.mesh);dress(n,mPV(n.o));if(ED.sel===n.id)glow(n,0x2a2a2a);ED.wires.filter(w=>w.a===n.id||w.b===n.id).forEach(wmesh)}
+function newArray(n){const A=arrays().filter(a=>a!==n),f=A[0],take=f?Math.max(1,Math.floor(f.o.n/2)):S.panels;let i=0;while(A.some(a=>a.o.name==="Array "+String.fromCharCode(65+i)))i++;n.o={n:take,name:"Array "+String.fromCharCode(65+i)};if(f&&f.o.n-take>=1){f.o.n-=take;rebuildPV(f)}rebuildPV(n);
+ const iv=ED.nodes.find(x=>x.type==="inv"),b=mkNode("pvb",Math.min(16,n.x+4),n.z,++ED.id);ED.wires.push({a:n.id,b:b.id,k:"p"},{a:n.id,b:b.id,k:"n"});if(iv)ED.wires.push({a:b.id,b:iv.id,k:"p"},{a:b.id,b:iv.id,k:"n"});rewire();const t=arrays().reduce((a,x)=>a+x.o.n,0);if(t!==S.panels)setPanels(t)}
+function pvInfo(n){const f=id=>+$(id).value,vo=f("voc"),vm=f("vmp"),is=f("iSc"),mx=f("maxDcV"),mn=f("mpptMin"),N=n.o.n,vc=vo*N*vocF(f("lowT")),vh=vm*N*.85,bad=vc>mx||vh<mn;
+ $("pvInfo").innerHTML=`${(N*S.watts/1000).toFixed(2)} kWp, one string of ${N}: Voc cold ${vc.toFixed(0)} V (inverter max ${mx} V), Vmp ${(vm*N).toFixed(0)} V (hot ${vh.toFixed(0)} V, MPPT min ${mn} V), Isc ${is} A. <b class="${bad?"bad":"ok"}">${vc>mx?"Too many panels in series.":vh<mn?"Too few panels for the MPPT range.":"Within inverter limits."}</b>`}
 function seed(){clearScene();const N=(ty,x,z)=>mkNode(ty,x,z,++ED.id).id,pv=N("pv",-9,0),pb=N("pvb",-3.5,-3),iv=N("inv",0,-3),ab=N("acb",3.5,-3),hm=N("home",8,0),bt=S.bat>0?N("bat",0,3):0,pr=(a,b)=>ED.wires.push({a,b,k:"p"},{a,b,k:"n"});
- pr(pv,pb);pr(pb,iv);pr(iv,ab);pr(ab,hm);if(bt)pr(bt,iv);ED.wires.push({a:iv,b:hm,k:"g"});rewire();ED.hist=[];ED.key=S.panels+"|"+(S.bat>0);upd()}
+ pr(pv,pb);pr(pb,iv);pr(iv,ab);pr(ab,hm);if(bt)pr(bt,iv);ED.wires.push({a:iv,b:hm,k:"g"});rewire();ED.hist=[];ED.key=edKey();upd()}
 function conn(a,b){const seen=new Set([a]),q=[a];while(q.length){const c=q.pop();for(const w of ED.wires){const o=w.a===c?w.b:w.b===c?w.a:null;if(o&&!seen.has(o)){seen.add(o);q.push(o)}}}return seen.has(b)}
 function edWarn(){if(!ED.ready)return[];const f=ty=>ED.nodes.find(n=>n.type===ty),pv=f("pv"),iv=f("inv"),bt=f("bat"),hm=f("home"),o=[];
- if(pv&&iv&&!conn(pv.id,iv.id))o.push("The PV array is not wired to the inverter.");
+ arrays().forEach(p=>{const k=c=>ED.wires.some(w=>(w.a===p.id||w.b===p.id)&&w.k===c);if(iv&&!conn(p.id,iv.id))o.push(`${p.o.name} is not wired to the inverter.`);else if(!k("p")||!k("n"))o.push(`${p.o.name} needs its own + and − wires.`)});
+ if(iv&&arrays().length>(+$("mppts").value||2))o.push(`${arrays().length} arrays but the inverter has ${+$("mppts").value||2} MPPT inputs. Only join arrays in parallel if they face the same way.`);
  if(bt&&iv&&!conn(bt.id,iv.id))o.push("The battery is not wired to the inverter.");
  if(iv&&hm&&!conn(iv.id,hm.id))o.push("The inverter is not wired to the home.");
  if(!ED.wires.some(w=>w.k==="g"))o.push("No ground conductor is drawn.");return o}
-function upd(){$("edInfo").textContent=ED.place?`Placing ${TY[ED.place][0]}: click the floor to drop it. Esc cancels.`:`${ED.nodes.length} parts, ${ED.wires.length} wires. Drag a part to move it, drag empty space to orbit. In a wire mode, click two parts to connect them. Pick a part from the library to add it.`;$("edUndo").textContent="Undo ("+ED.hist.length+")";if(E&&!ED.inR){ED.inR=true;try{render()}finally{ED.inR=false}}}
-function syncEd(){if(!ED.ready)return;const key=S.panels+"|"+(S.bat>0);if(key===ED.key)return;ED.key=key;
- const pv=ED.nodes.find(n=>n.type==="pv");if(pv){ED.t.sc.remove(pv.mesh);disp(pv.mesh);dress(pv,mPV())}
+function upd(){wallUI();$("edInfo").textContent=ED.place?`Placing ${TY[ED.place][0]}: click the floor to drop it. Esc cancels.`:`${ED.nodes.length} parts, ${ED.wires.length} wires. Drag a part to move it, drag empty space to orbit. In a wire mode, click two parts to connect them. Pick a part from the library to add it. Hardware dragged onto a wall face mounts to it.`;$("edUndo").textContent="Undo ("+ED.hist.length+")";if(E&&!ED.inR){ED.inR=true;try{render()}finally{ED.inR=false}}}
+function syncEd(){if(!ED.ready)return;const key=edKey();if(key===ED.key)return;ED.key=key;
+ const A=arrays();if(A.length){const oth=A.slice(1).reduce((a,n)=>a+n.o.n,0);A[0].o.n=Math.max(1,S.panels-oth);let ex=oth+A[0].o.n-S.panels;for(let i=A.length-1;i>0&&ex>0;i--){const t=Math.min(ex,A[i].o.n-1);A[i].o.n-=t;ex-=t}A.forEach(rebuildPV)}
  const bt=ED.nodes.find(n=>n.type==="bat"),iv=ED.nodes.find(n=>n.type==="inv");
  if(S.bat>0&&!bt&&iv){const b=mkNode("bat",iv.x,iv.z+6,++ED.id);ED.wires.push({a:b.id,b:iv.id,k:"p"},{a:b.id,b:iv.id,k:"n"})}
  if(!(S.bat>0)&&bt)rmNode(bt.id);
  rewire();upd()}
+function wallUI(){const n=ED.nodes&&ED.nodes.find(x=>x.id===ED.sel),W=$("edWall"),P=$("edPV"),Mt=$("edMount");W.hidden=!(n&&n.type==="wall");P.hidden=!(n&&n.type==="pv");Mt.hidden=!(n&&n.m);
+ if(!P.hidden)pvInfo(n);
+ if(!W.hidden&&!W.contains(document.activeElement))[["wL","l"],["wH","h"],["wT","t"]].forEach(a=>$(a[0]).value=n.o[a[1]]);
+ if(!P.hidden&&!P.contains(document.activeElement)){$("pN").value=n.o.n;$("pT").value=pvv(n.o,"tilt");$("pA").value=pvv(n.o,"az");$("pNm").textContent=n.o.name}
+ if(!Mt.hidden&&!Mt.contains(document.activeElement)){$("mY").value=n.m.y.toFixed(2);$("mU").value=n.m.u.toFixed(2)}}
+function wallSet(n){ED.t.sc.remove(n.mesh);disp(n.mesh);dress(n,mWall(n.o));follow(n);if(ED.sel===n.id)glow(n,0x2a2a2a);ED.wires.filter(w=>w.a===n.id||w.b===n.id).forEach(wmesh)}
+$("edWall").oninput=e=>{const n=ED.nodes.find(x=>x.id===ED.sel),k=e.target.dataset.wk,v=parseFloat(e.target.value);if(!n||n.type!=="wall"||!k||!(v>0))return;if(!ED._wp){push();ED._wp=1}n.o[k]=Math.min(+e.target.max,Math.max(+e.target.min,v));wallSet(n)};
+$("edWall").onchange=()=>{ED._wp=0};
+$("edPV").oninput=e=>{const n=ED.nodes.find(x=>x.id===ED.sel),k=e.target.dataset.pk,v=parseFloat(e.target.value);if(!n||n.type!=="pv"||!k||!Number.isFinite(v))return;if(!ED._wp){push();ED._wp=1}
+ const lim={n:[1,400],tilt:[0,45],az:[0,360]}[k];n.o[k]=Math.round(Math.min(lim[1],Math.max(lim[0],v)));rebuildPV(n);if(k==="n"){const t=arrays().reduce((a,x)=>a+x.o.n,0);if(t!==S.panels)setPanels(t)}pvInfo(n)};
+$("edPV").onchange=()=>{ED._wp=0};
+$("edMount").oninput=e=>{const n=ED.nodes.find(x=>x.id===ED.sel),k=e.target.dataset.mk,v=parseFloat(e.target.value);if(!n||!n.m||!k||!Number.isFinite(v))return;const w=ED.nodes.find(x=>x.id===n.m.w);if(!ED._wp){push();ED._wp=1}
+ n.m[k]=k==="y"?Math.max(0,Math.min(Math.max(0,w.o.h-n.h),v)):Math.max(-w.o.l/2+.1,Math.min(w.o.l/2-.1,v));applyMount(n);ED.wires.filter(x=>x.a===n.id||x.b===n.id).forEach(wmesh)};
+$("edMount").onchange=()=>{ED._wp=0};
+$("mDet").onclick=()=>{const n=ED.nodes.find(x=>x.id===ED.sel);if(!n||!n.m)return;push();n.m=null;n.mesh.position.y=0;n.mesh.rotation.y=n.r*Math.PI/2;ED.wires.filter(x=>x.a===n.id||x.b===n.id).forEach(wmesh);wallUI()};
 function cancelPlace(){if(ED.ghost){ED.t.sc.remove(ED.ghost);disp(ED.ghost);ED.ghost=null}if(ED.place){ED.place=null;upd()}}
-function startPlace(type){if(!ED.ready)return;if(ED.place===type){cancelPlace();return}cancelPlace();if(ED.pend){glow(ED.pend,0);ED.pend=null}
- ED.place=type;const g=BUILD[type]().g;g.traverse(o=>{if(o.isMesh)[].concat(o.material).forEach(m=>{m.transparent=true;m.opacity=.55})});g.visible=false;ED.t.sc.add(g);ED.ghost=g;upd()}
-function placeAt(x,z){const t=ED.place;if(!t)return;push();const n=mkNode(t,Math.max(-16,Math.min(16,x)),Math.max(-12,Math.min(12,z)),++ED.id);cancelPlace();sel(n);upd()}
+function startPlace(type,o){if(!ED.ready)return;if(ED.place===type&&ED.wo===o){cancelPlace();return}cancelPlace();ED.wo=o||null;if(ED.pend){glow(ED.pend,0);ED.pend=null}
+ ED.place=type;const B=BUILD[type](o),g=B.g;ED.gh=B.h;g.updateMatrixWorld(true);ED.gd=-Math.min(0,new THREE.Box3().setFromObject(g).min.z);g.traverse(o=>{if(o.isMesh)[].concat(o.material).forEach(m=>{m.transparent=true;m.opacity=.55})});g.visible=false;ED.t.sc.add(g);ED.ghost=g;upd()}
+function placeAt(x,z,m){const t=ED.place,wo=ED.wo;if(!t)return;push();const n=mkNode(t,Math.max(-16,Math.min(16,x)),Math.max(-12,Math.min(12,z)),++ED.id,0,wo?{...wo}:undefined,m?{...m}:undefined);if(t==="pv")newArray(n);cancelPlace();sel(n);upd()}
 async function initEditor(){if(ED.ready||ED.loading||ED.failed)return;ED.loading=true;
  try{await needThree()}
  catch(e){ED.loading=false;ED.failed=true;$("stage").innerHTML=stage();$("edInfo").textContent="The 3D view needs internet access to load three.js. Showing the static diagram instead.";return}
@@ -579,20 +683,23 @@ async function initEditor(){if(ED.ready||ED.loading||ED.failed)return;ED.loading
  const ray=new THREE.Raycaster(),pl=new THREE.Plane(new THREE.Vector3(0,1,0),0),ndc=new THREE.Vector2(),pt=new THREE.Vector3();let drag=null,moved=false;
  const aim=e=>{const r=rd.domElement.getBoundingClientRect();ndc.set((e.clientX-r.left)/r.width*2-1,-((e.clientY-r.top)/r.height)*2+1);ray.setFromCamera(ndc,cam)};
  const hitNode=()=>{const h=ray.intersectObjects(ED.nodes.map(n=>n.mesh),true)[0];if(!h)return null;let o=h.object;while(o&&!ED.nodes.some(n=>n.mesh===o))o=o.parent;return o?ED.nodes.find(n=>n.mesh===o):null};
+ const wallHit=()=>{const ws=ED.nodes.filter(n=>n.type==="wall"),h=ray.intersectObjects(ws.map(n=>n.mesh),true)[0];if(!h)return null;let o=h.object;while(o&&!ws.some(n=>n.mesh===o))o=o.parent;const w=ws.find(n=>n.mesh===o);if(!w)return null;const p=w.mesh.worldToLocal(h.point.clone());
+  if(Math.abs(Math.abs(p.z)-w.o.t/2)>.05||Math.abs(p.x)>w.o.l/2-.02||p.y>w.o.h)return null;return{w,u:p.x,y:p.y,side:p.z>=0?1:-1}};
  rd.domElement.addEventListener("pointerdown",e=>{aim(e);
   if(ED.place){ED.pd=[e.clientX,e.clientY];return}
   if(ED.mode==="cut"){const h=ray.intersectObjects(ED.wires.map(w=>w.m).filter(Boolean),false)[0];if(h){push();const w=h.object.userData.wire;ED.t.sc.remove(w.m);ED.wires=ED.wires.filter(x=>x!==w);rewire();upd()}return}
   const n=hitNode();
   if(ED.mode==="move"){sel(n);if(n){drag=n;moved=false;oc.enabled=false;rd.domElement.setPointerCapture(e.pointerId)}return}
-  if(!n)return;
+  if(!n||n.type==="wall")return;
   if(!ED.pend){ED.pend=n;glow(n,0x6a4500)}
   else if(ED.pend!==n){push();const a=ED.pend.id,b=n.id;(ED.mode==="pair"?["p","n"]:[ED.mode]).forEach(k=>ED.wires.push({a,b,k}));rewire();glow(ED.pend,0);ED.pend=null;upd()}});
  rd.domElement.addEventListener("pointermove",e=>{
-  if(ED.place&&ED.ghost){aim(e);if(ray.ray.intersectPlane(pl,pt)){ED.ghost.visible=true;ED.ghost.position.set(Math.max(-16,Math.min(16,pt.x)),0,Math.max(-12,Math.min(12,pt.z)))}return}
-  if(!drag)return;aim(e);if(ray.ray.intersectPlane(pl,pt)){if(!moved){push();moved=true}
-  drag.x=Math.max(-16,Math.min(16,pt.x));drag.z=Math.max(-12,Math.min(12,pt.z));drag.mesh.position.x=drag.x;drag.mesh.position.z=drag.z;ED.wires.filter(w=>w.a===drag.id||w.b===drag.id).forEach(wmesh)}});
+  if(ED.place&&ED.ghost){aim(e);{const wh=MOUNT.includes(ED.place)?wallHit():null;if(wh){const p=mPose(wh.w,mFor(wh,ED.gh),ED.gd);ED.ghost.visible=true;ED.ghost.position.set(p.x,p.y,p.z);ED.ghost.rotation.y=p.ry;return}ED.ghost.rotation.y=0}if(ray.ray.intersectPlane(pl,pt)){ED.ghost.visible=true;ED.ghost.position.set(Math.max(-16,Math.min(16,pt.x)),0,Math.max(-12,Math.min(12,pt.z)))}return}
+  if(!drag)return;aim(e);{const wh=MOUNT.includes(drag.type)?wallHit():null;if(wh){if(!moved){push();moved=true}drag.m=mFor(wh,drag.h);applyMount(drag);ED.wires.filter(w=>w.a===drag.id||w.b===drag.id).forEach(wmesh);wallUI();return}if(drag.m){if(!moved){push();moved=true}drag.m=null;drag.mesh.position.y=0;drag.mesh.rotation.y=drag.r*Math.PI/2;wallUI()}}
+  if(ray.ray.intersectPlane(pl,pt)){if(!moved){push();moved=true}
+  drag.x=Math.max(-16,Math.min(16,pt.x));drag.z=Math.max(-12,Math.min(12,pt.z));drag.mesh.position.x=drag.x;drag.mesh.position.z=drag.z;ED.wires.filter(w=>w.a===drag.id||w.b===drag.id).forEach(wmesh);if(drag.type==="wall")follow(drag)}});
  rd.domElement.addEventListener("pointerup",e=>{
-  if(ED.place&&ED.pd){const tap=Math.hypot(e.clientX-ED.pd[0],e.clientY-ED.pd[1])<6;ED.pd=null;if(tap){aim(e);if(ray.ray.intersectPlane(pl,pt))placeAt(pt.x,pt.z)}}
+  if(ED.place&&ED.pd){const tap=Math.hypot(e.clientX-ED.pd[0],e.clientY-ED.pd[1])<6;ED.pd=null;if(tap){aim(e);const wh=MOUNT.includes(ED.place)?wallHit():null;if(wh)placeAt(0,0,mFor(wh,ED.gh));else if(ray.ray.intersectPlane(pl,pt))placeAt(pt.x,pt.z)}}
   drag=null;oc.enabled=true});
  new ResizeObserver(()=>{cam.aspect=W()/H();cam.updateProjectionMatrix();rd.setSize(W(),H())}).observe(el);
  (function loop(){requestAnimationFrame(loop);if(!$("tool").classList.contains("on"))return;oc.update();rd.render(sc,cam)})();
@@ -601,9 +708,9 @@ $("edBar").onclick=e=>{const b=e.target.closest("button");if(!b||!ED.ready)retur
  if(b.dataset.mode){cancelPlace();ED.mode=b.dataset.mode;if(ED.pend){glow(ED.pend,0);ED.pend=null}document.querySelectorAll("#edBar [data-mode]").forEach(x=>x.classList.toggle("on",x===b))}
  else if(b.id==="edUndo")undo();
  else if(b.id==="edClear"){push();ED.wires.forEach(w=>w.m&&ED.t.sc.remove(w.m));ED.wires=[];upd()}
- else if(b.id==="edRot"){const n=ED.nodes.find(x=>x.id===ED.sel);if(n){push();n.r=(n.r+1)%4;n.mesh.rotation.y=n.r*Math.PI/2;upd()}}
+ else if(b.id==="edRot"){const n=ED.nodes.find(x=>x.id===ED.sel);if(n){push();n.r=(n.r+1)%4;if(!n.m)n.mesh.rotation.y=n.r*Math.PI/2;if(n.type==="wall")follow(n);upd()}}
  else if(b.id==="edDel"){if(ED.sel){push();rmNode(ED.sel);ED.sel=null;upd()}}};
-$("lib").onclick=e=>{const t=e.target.closest("[data-lt]");if(t){ED.lt=t.dataset.lt;drawLib();return}const b=e.target.closest("[data-add]");if(b)startPlace(b.dataset.add)};
+$("lib").onclick=e=>{const t=e.target.closest("[data-lt]");if(t){ED.lt=t.dataset.lt;drawLib();return}const b=e.target.closest("[data-add]");if(b)startPlace(b.dataset.add,LIB[ED.lt||"Breakers"][+b.dataset.k][3])};
 document.addEventListener("keydown",e=>{if(!ED.ready||!$("tool").classList.contains("on")||/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName))return;
  if(e.key==="Escape")cancelPlace();else if(e.key==="Delete"&&ED.sel){push();rmNode(ED.sel);ED.sel=null;upd()}else if((e.ctrlKey||e.metaKey)&&e.key==="z"){e.preventDefault();undo()}});
 // ---- equipment catalog and material picker ----
@@ -622,7 +729,7 @@ const CAT={
  bat:[{id:"l100",brand:"Generic LiFePO4",model:"51.2 V 100 Ah",kwh:5.12,price:44000},
   {id:"l200",brand:"Generic LiFePO4",model:"51.2 V 200 Ah",kwh:10.24,price:87000}]};
 const byId=(a,id)=>a.find(x=>x.id===id);
-const NEWK=["dc_isolator","combiner_box","kwh_meter","dist_board"];
+const NEWK=["dc_isolator","combiner_box","kwh_meter","dist_board","prot_mcb1","prot_mcb3","prot_mcb4","prot_rcd2","prot_rcd4","prot_rcdb","prot_rcbo","ctc2","ctc4","dc_fuse","ats2","ac_iso2"];
 function pickPO(){const m=byId(CAT.mod,S.sel.mod),iv=byId(CAT.inv,S.sel.inv),bt=byId(CAT.bat,S.sel.bat),o={};
  if(m)o.panel_per_watt=+(m.price/m.w).toFixed(4);if(iv)o.inverter_per_kw=+(iv.price/iv.kw).toFixed(2);if(bt)o.bat_kwh=+(bt.price/bt.kwh).toFixed(2);return o}
 function ovr(){return Object.assign({},pickPO(),S.UE||{})}
@@ -755,13 +862,261 @@ document.querySelectorAll("[data-view]").forEach(b=>b.onclick=()=>setView(b.data
 document.querySelectorAll("[data-m3]").forEach(b=>b.onclick=()=>{R3.mode=b.dataset.m3;document.querySelectorAll("[data-m3]").forEach(x=>x.classList.toggle("on",x===b));
  $("r3hint").textContent=R3.mode==="tilt"?"Drag a roof face: up or down changes the tilt, left or right turns the direction.":"Drag to orbit, scroll to zoom, right-drag to pan. Click a face to select it."});
 $("rH").addEventListener("input",r3faces);
+// ---- Parts 3D: a 3D model for every catalog item, plus mounting detail ----
+const P3={ready:false,loading:false,failed:false,cat:"mod",id:"gen500",mod:"gen500",ex:0,fl:null,grp:null,cv:null};
+const PMNT=[{id:"rail",name:"Mounting rail, 4.2 m",key:"rail_4_2m"},{id:"hook",name:"Roof hook",key:"roof_hook"},{id:"mid",name:"Mid clamp",key:"clamp"},{id:"end",name:"End clamp",key:"clamp"},{id:"asm",name:"Full mounting assembly",key:null}];
+const PG={mod:"PV modules",inv:"Inverters",bat:"Batteries",mnt:"Mounting"};
+const pItems=c=>c==="mnt"?PMNT:CAT[c];
+const pCur=()=>pItems(P3.cat).find(x=>x.id===P3.id)||pItems(P3.cat)[0];
+const AL=()=>M(0xc3c9d4,{metalness:.6,roughness:.35}),SS=()=>M(0xdfe4ec,{metalness:.85,roughness:.22}),BLK=()=>M(0x15181d,{roughness:.6});
+const RA=.011,RL=.076,RB=RA+.067;           // roof wave height, wave pitch, rail bottom height above the sheet
+const xg=(o,dy)=>{o.userData.by=o.position.y;o.userData.bdy=dy;return o};
+function pTag(g,txt,x,y,z,sc){const c=document.createElement("canvas");c.width=360;c.height=64;const q=c.getContext("2d");q.fillStyle="#0c121ee6";q.fillRect(0,6,360,52);q.strokeStyle="#f2a900";q.strokeRect(1,7,358,50);q.fillStyle="#f2c14e";q.font="bold 28px sans-serif";q.textAlign="center";q.textBaseline="middle";q.fillText(txt,180,32);
+ const s=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthTest:false}));s.scale.set(5.625*sc,sc,1);s.position.set(x,y,z);s.renderOrder=10;s.userData.dim=true;g.add(s);return s}
+function pDim(g,a,b,txt,sc,off){a=new THREE.Vector3(a[0],a[1],a[2]);b=new THREE.Vector3(b[0],b[1],b[2]);
+ const l=new THREE.Line(new THREE.BufferGeometry().setFromPoints([a,b]),new THREE.LineBasicMaterial({color:0xf2a900,depthTest:false}));l.renderOrder=10;l.userData.dim=true;g.add(l);
+ const m=a.clone().add(b).multiplyScalar(.5);if(off)m.add(new THREE.Vector3(off[0],off[1],off[2]));pTag(g,txt,m.x,m.y,m.z,sc)}
+function modTex(cols,rows,dark,faint){return mkTex(cols*24,rows*12,(c,W,H)=>{c.fillStyle=dark?"#070b14":"#0d1f45";c.fillRect(0,0,W,H);const cw=W/cols,ch=H/rows,nb=dark?4:2;
+ for(let i=0;i<cols;i++)for(let j=0;j<rows;j++){c.fillStyle=dark?"#101a33":"#1d4190";c.fillRect(i*cw+1.5,j*ch+1,cw-3,ch-2);c.fillStyle=dark?"rgba(160,175,205,.35)":"rgba(190,205,235,.55)";for(let k=1;k<=nb;k++)c.fillRect(i*cw+k*cw/(nb+1),j*ch+1,1,ch-2)}})}
+const isDark=it=>/N-type/.test(it.brand+" "+it.model);
+const modRows=it=>it.w>450?26:24;
+// ---------- PV module (upright, shows front, back with junction box, label, cables) ----------
+function pMod(it){const g=new THREE.Group(),l=it.l,w=it.wd,t=.035,fw=.035,dark=isDark(it),bif=/bifacial/i.test(it.model),fr=M(dark?0x1a1e27:0xc3c9d4,{metalness:.5,roughness:.4}),y0=.12,cy=y0+l/2;
+ bx(g,w,fw,t,fr,0,y0+fw/2,0);bx(g,w,fw,t,fr,0,y0+l-fw/2,0);bx(g,fw,l,t,fr,-w/2+fw/2,cy,0);bx(g,fw,l,t,fr,w/2-fw/2,cy,0);
+ bx(g,w-2*fw,l-2*fw,t-.012,M(0x111722),0,cy,0);
+ const gl=new THREE.Mesh(new THREE.PlaneGeometry(w-2*fw,l-2*fw),M(0xffffff,{map:modTex(6,modRows(it),dark),roughness:.2,metalness:.3}));gl.position.set(0,cy,t/2-.004);g.add(gl);
+ const bk=new THREE.Mesh(new THREE.PlaneGeometry(w-2*fw,l-2*fw),bif?M(0xffffff,{map:modTex(6,modRows(it),false),transparent:true,opacity:.6,roughness:.2}):M(0xf1f3f6,{roughness:.8}));bk.rotation.y=Math.PI;bk.position.set(0,cy,-t/2+.004);g.add(bk);
+ const jy=y0+l*.8;bx(g,.14,.08,.022,M(0x1d2129),0,jy,-t/2-.011);
+ [-1,1].forEach(s=>{const pts=[new THREE.Vector3(s*.04,jy-.04,-t/2-.015),new THREE.Vector3(s*.07,jy-.2,-t/2-.035),new THREE.Vector3(s*.2,jy-.4,-t/2-.04)];
+  const tb=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),16,.0045,6,false),BLK());g.add(tb);
+  bx(g,.022,.06,.022,M(s>0?0xd33a3a:0x15181d),s*.2,jy-.43,-t/2-.04)});
+ const lb=decal(g,.42,.3,txtTex(260,190,[[it.model,24,"#222"],[it.w+" W   Voc "+it.voc+" V",22,"#333"],["Vmp "+it.vmp+" V   Isc "+it.isc+" A",22,"#333"]],"#e9edf2"),0,y0+l*.42,-t/2-.001);lb.rotation.y=Math.PI;
+ [-1,1].forEach(s=>bx(g,.06,.12,.2,M(0x2a3140),s*w*.3,.06,0));
+ const sc=.22;pDim(g,[-w/2,y0-.04,.04],[w/2,y0-.04,.04],Math.round(w*1000)+" mm",sc,[0,-.12,0]);pDim(g,[w/2+.07,y0,.04],[w/2+.07,y0+l,.04],Math.round(l*1000)+" mm",sc,[.32,0,0]);pDim(g,[-w/2-.06,cy,-t/2],[-w/2-.06,cy,t/2],"35 mm",sc*.8,[-.3,0,0]);
+ return{g,cam:[2.3,1.9,3.6],tgt:[0,cy,0],fl:2.2,gy:0}}
+// ---------- inverter: size follows rating; hybrid has battery terminals, grid-tied has a DC isolator ----------
+function pInv(it){const g=new THREE.Group(),hy=it.type==="hybrid",w=.42+it.kw*.02,h=.55+it.kw*.03,d=hy?.23:.2,y0=.35,
+ body=M(0xe6eaf0,{roughness:.5,metalness:.2}),dk=M(0x1c2433,{roughness:.4}),fin=M(0xb9c0cc,{metalness:.35,roughness:.4}),wall=M(0x2a3140,{roughness:.9,metalness:0}),cy=y0+h/2;
+ bx(g,w+.5,h+.7,.03,wall,0,cy,-d/2-.045);[y0+h-.05,y0+.05].forEach(y=>{bx(g,w*.8,.05,.02,fin,0,y,-d/2-.01);[-1,1].forEach(s=>cyl(g,.01,.012,fin,s*w*.35,y,-d/2-.026,1))});
+ bx(g,w,h,d,body,0,cy,0);for(let i=0;i<10;i++)[-1,1].forEach(s=>bx(g,.03,.012,d*.9,fin,s*(w/2+.015),y0+.1+i*((h-.2)/9),0));
+ bx(g,w-.05,h-.05,.012,dk,0,cy,d/2+.006);
+ decal(g,.2,.1,hy?txtTex(180,90,[["HYBRID",26,"#3ecf8e"],[it.kw+" kW",24,"#8fe6bf"]],"#08202a"):txtTex(180,90,[["GRID-TIED",22,"#4ea1ff"],[it.kw+" kW",24,"#9cc8ff"]],"#08202a"),0,y0+h*.76,d/2+.013);
+ [[0x3ecf8e,-.05],[0xf2a900,0],[0x4ea1ff,.05]].forEach(a=>cyl(g,.007,.006,BM(a[0]),a[1],y0+h*.6,d/2+.014,1));
+ [-.075,-.025,.025,.075].forEach(x=>bx(g,.04,.02,.006,M(0x39465e),x,y0+h*.5,d/2+.015));
+ decal(g,.3,.07,txtTex(260,60,[[it.model,22,"#e8edf7"]],"#1c2433"),0,y0+h*.36,d/2+.013);
+ let x=-w/2+.05;const bot=y0-.035;
+ for(let i=0;i<it.mppts*2;i++){const c=i%2?0x15181d:0xd33a3a;cyl(g,.011,.07,M(c,{roughness:.5}),x,bot,d/2-.04);cyl(g,.014,.012,M(0x2b3039),x,y0-.006,d/2-.04);x+=.04}
+ x+=.02;
+ if(hy){[0xd33a3a,0x15181d].forEach(c=>{cyl(g,.018,.05,M(c,{roughness:.5}),x,y0-.025,d/2-.04);x+=.05});x+=.02}
+ for(let i=0;i<2;i++){cyl(g,.016,.045,M(0x8a93a3,{metalness:.4}),x,y0-.022,d/2-.04);x+=.04}
+ if(hy)bx(g,.05,.012,.035,M(0x14181f),w/2-.05,y0-.006,-d/2+.06);
+ if(!hy){bx(g,.08,.08,.04,M(0xf2c14e),-w/2+.08,y0+h*.2,d/2+.02);cyl(g,.022,.03,M(0xd33a3a),-w/2+.08,y0+h*.2,d/2+.055,1)}
+ bx(g,.03,.07,.02,M(0x2b3039),w/2-.05,y0-.03,d/2-.02);
+ const sc=.09;pDim(g,[-w/2,y0-.12,d/2],[w/2,y0-.12,d/2],Math.round(w*1000)+" mm",sc,[0,-.07,0]);pDim(g,[w/2+.1,y0,d/2],[w/2+.1,y0+h,d/2],Math.round(h*1000)+" mm",sc,[.25,0,0]);pDim(g,[w/2+.1,y0+h+.05,-d/2],[w/2+.1,y0+h+.05,d/2],Math.round(d*1000)+" mm",sc,[.1,.08,0]);
+ return{g,cam:[1.2,1.0,1.7],tgt:[0,cy,0],fl:.9,gy:0}}
+// ---------- LiFePO4 rack battery: height follows kWh, stacked by the quantity in the design ----------
+function pBat(it){const g=new THREE.Group(),n=Math.max(1,Math.min(6,S.sel.qty||1)),ah=Math.round(it.kwh*1000/51.2),w=.44,d=.45,h=.10+it.kwh*.012,gap=.015,y0=.1,
+ dk=M(0x242a33,{roughness:.5}),mt=M(0xb9c0cc,{metalness:.35,roughness:.4}),pst=M(0x8a93a3,{metalness:.5,roughness:.4}),tot=n*(h+gap)+.05;
+ bx(g,.62,.04,d+.06,pst,0,y0-.02,0);
+ [-1,1].forEach(s=>[d/2-.02,-d/2+.02].forEach(z=>bx(g,.04,tot+.06,.04,pst,s*.24,y0+(tot+.06)/2,z)));
+ const lt=txtTex(220,150,[["LiFePO4",30,"#3ecf8e"],["51.2 V  "+ah+" Ah",24,"#e8edf7"],[it.kwh+" kWh",22,"#9aa8c0"]],"#10151c");
+ for(let k=0;k<n;k++){const y=y0+.03+gap/2+k*(h+gap)+h/2;
+  bx(g,w,h,d,dk,0,y,0);bx(g,.52,h,.01,mt,0,y,d/2+.005);
+  [-1,1].forEach(s=>cyl(g,.008,.012,dk,s*.24,y,d/2+.011,1));
+  bx(g,.1,.014,.03,mt,-.15,y,d/2+.025);[-1,1].forEach(s=>bx(g,.012,.012,.02,mt,-.15+s*.04,y,d/2+.017));
+  cyl(g,.015,.03,M(0xd33a3a),-.06,y+h*.15,d/2+.025,1);cyl(g,.015,.03,M(0x15181d),-.02,y+h*.15,d/2+.025,1);
+  decal(g,.13,Math.min(h*.8,.15),lt,.06,y,d/2+.011);
+  for(let i=0;i<5;i++)bx(g,.012,.012,.004,BM(i<4?0x3ecf8e:0x2b3d34),.15,y+h*.3-i*.018,d/2+.012);
+  bx(g,.03,.05,.025,M(0xd33a3a),.2,y-h*.1,d/2+.02);bx(g,.03,.008,.004,dk,.2,y+h*.3,d/2+.012)}
+ const sc=.09;pDim(g,[-.26,y0-.07,d/2],[.26,y0-.07,d/2],"520 mm",sc,[0,-.06,0]);pDim(g,[.34,y0+.03,d/2],[.34,y0+.03+h,d/2],Math.round(h*1000)+" mm per unit",sc,[.3,0,0]);pDim(g,[.34,y0+.03,-d/2],[.34,y0+.03,d/2],Math.round(d*1000)+" mm",sc,[.1,-.06,0]);
+ if(n>1)pTag(g,n+" units stacked",0,y0+tot+.16,0,sc);
+ return{g,cam:[1.0,.5+tot*.4,1.45],tgt:[0,y0+tot/2,0],fl:.8,gy:y0-.04}}
+// ---------- mounting hardware ----------
+const RSH=(()=>{let s;return()=>s||(s=(()=>{const p=new THREE.Shape(),q=[[-.02,0],[.02,0],[.02,.04],[.007,.04],[.007,.035],[.0145,.035],[.0145,.0045],[-.0145,.0045],[-.0145,.035],[-.007,.035],[-.007,.04],[-.02,.04]];q.forEach((a,i)=>i?p.lineTo(a[0],a[1]):p.moveTo(a[0],a[1]));p.closePath();return p})())})();
+function railMesh(L,m){const ge=new THREE.ExtrudeGeometry(RSH(),{depth:L,bevelEnabled:false});ge.translate(0,0,-L/2);const k=new THREE.Mesh(ge,m);k.rotation.y=Math.PI/2;return k}
+function pSheet(wx,wz){const ge=new THREE.PlaneGeometry(wx,wz,Math.max(8,Math.round(wx/RL*8)),1),p=ge.attributes.position;for(let i=0;i<p.count;i++)p.setZ(i,RA*Math.cos(2*Math.PI*p.getX(i)/RL));ge.rotateX(-Math.PI/2);ge.computeVertexNormals();
+ return new THREE.Mesh(ge,M(0x9b4d3c,{metalness:.4,roughness:.55,side:THREE.DoubleSide}))}
+const purlin=(g,len,z)=>bx(g,len,.1,.06,M(0x6b4a32,{roughness:.9}),0,-RA-.05,z);
+// hook origin = on the ridge, over the purlin; the rail sits at z = -0.03 on its flange
+function mkHook(xp){const g=new THREE.Group(),ss=SS(),y0=RA,X=(o,d)=>xp?xg(o,d):o;
+ const seal=new THREE.Group();bx(seal,.044,.003,.118,BLK(),0,y0+.0015,0);g.add(X(seal,.03));
+ const pl=new THREE.Group();bx(pl,.036,.004,.11,ss,0,y0+.005,0);bx(pl,.036,.056,.004,ss,0,y0+.035,-.045);bx(pl,.05,.004,.05,ss,0,y0+.065,-.03);
+ [-1,1].forEach(s=>bx(pl,.004,.03,.03,ss,s*.016,y0+.025,-.03));cyl(pl,.007,.006,ss,0,RB-.0075,-.03);g.add(X(pl,.09));
+ const sc=new THREE.Group();[-.04,.04].forEach(z=>{cyl(sc,.0035,.082,ss,0,-.023,z);cyl(sc,.007,.006,ss,0,y0+.0145,z);cyl(sc,.011,.003,BLK(),0,y0+.0095,z)});g.add(X(sc,.17));
+ const bt=new THREE.Group();bx(bt,.024,.008,.014,ss,0,RB+.029,-.03);cyl(bt,.004,.041,ss,0,RB+.0085,-.03);g.add(X(bt,.42));
+ return g}
+function pHook(){const g=new THREE.Group(),ss=SS();
+ const sh=pSheet(.34,.34);g.add(sh);purlin(g,.4,0);
+ const hk=mkHook(true);g.add(hk);
+ const rl=new THREE.Group();rl.add(railMesh(.2,AL()));rl.position.set(0,RB,-.03);g.add(xg(rl,.27));
+ pDim(g,[-.018,.0,.058],[.018,.0,.058],"36 mm",.02,[0,-.02,0]);pDim(g,[.03,RA+.007,-.055],[.03,RA+.007,.055],"110 mm",.02,[.04,0,0]);pDim(g,[-.07,RA,-.045],[-.07,RB,-.045],"67 mm",.02,[-.05,0,0]);
+ return{g,ex:true,cam:[.3,.2,.3],tgt:[0,.05,-.02],fl:.3,gy:-RA-.101}}
+function mkMid(xp,ctx){const g=new THREE.Group(),ss=SS(),al=AL(),yT=.04,X=(o,d)=>xp?xg(o,d):o;
+ const body=new THREE.Group();bx(body,.06,.004,.04,al,0,yT+.037,0);bx(body,.018,.035,.04,al,0,yT+.0175,0);g.add(X(body,.14));
+ const bt=new THREE.Group();cyl(bt,.007,.005,ss,0,yT+.0415,0);cyl(bt,.004,.05,ss,0,.055,0);g.add(X(bt,.26));
+ const tn=new THREE.Group();bx(tn,.026,.008,.016,ss,0,.028,0);g.add(X(tn,.05));
+ if(ctx){const rl=new THREE.Group();rl.add(railMesh(.16,al));g.add(rl);[-1,1].forEach(s=>bx(g,.035,.035,.12,al,s*.0275,yT+.0175,0))}
+ return g}
+function mkEnd(xp,ctx){const g=new THREE.Group(),ss=SS(),al=AL(),yT=.04,X=(o,d)=>xp?xg(o,d):o;
+ const body=new THREE.Group();bx(body,.004,.036,.04,al,.003,yT+.018,0);bx(body,.049,.004,.04,al,.0255,yT+.002,0);bx(body,.035,.004,.04,al,-.0125,yT+.037,0);g.add(X(body,.14));
+ const bt=new THREE.Group();cyl(bt,.007,.005,ss,.027,yT+.0065,0);cyl(bt,.004,.022,ss,.027,.033,0);g.add(X(bt,.26));
+ const tn=new THREE.Group();bx(tn,.026,.008,.016,ss,.027,.028,0);g.add(X(tn,.05));
+ if(ctx){const rl=new THREE.Group();rl.add(railMesh(.14,al));rl.position.x=.027;g.add(rl);bx(g,.035,.035,.12,al,-.0175,yT+.0175,0)}
+ return g}
+function pRail(){const g=new THREE.Group(),al=AL();
+ g.add(railMesh(4.2,al));bx(g,.026,.008,.016,SS(),1,.028,0);cyl(g,.004,.04,SS(),1,.045,0);cyl(g,.007,.005,SS(),1,.067,0);
+ const sl=new THREE.Group(),r=railMesh(.01,al);sl.add(r);sl.scale.set(6,6,6);sl.position.set(-2.7,.02,0);g.add(sl);
+ pTag(g,"Cross-section, 6x scale",-2.7,.42,0,.12);pDim(g,[-2.1,-.05,.5],[2.1,-.05,.5],"4200 mm",.14,[0,-.12,0]);pTag(g,"40 x 40 mm, T-slot 14 mm",-2.7,-.18,0,.1);
+ return{g,cam:[-.5,1.3,4.8],tgt:[-.4,.1,0],fl:3.2,gy:0}}
+function modFlat(it){const g=new THREE.Group(),l=it.l,w=it.wd,t=.035,fw=.035,fr=M(isDark(it)?0x1a1e27:0xc3c9d4,{metalness:.5,roughness:.4});
+ bx(g,w,t,fw,fr,0,t/2,l/2-fw/2);bx(g,w,t,fw,fr,0,t/2,-l/2+fw/2);bx(g,fw,t,l,fr,-w/2+fw/2,t/2,0);bx(g,fw,t,l,fr,w/2-fw/2,t/2,0);bx(g,w-2*fw,t-.012,l-2*fw,M(0x111722),0,t/2,0);
+ const gl=new THREE.Mesh(new THREE.PlaneGeometry(w-2*fw,l-2*fw),M(0xffffff,{map:modTex(6,modRows(it),isDark(it)),roughness:.2,metalness:.3}));gl.rotation.x=-Math.PI/2;gl.position.y=t-.004;g.add(gl);return g}
+function pAsm(){const it=byId(CAT.mod,P3.mod)||CAT.mod[1],g=new THREE.Group(),l=it.l,w=it.wd,gap=.02,xR=w+gap/2,rz=l*.25,RLn=2*w+gap+.3,SX=2*w+.9,SZ=l+.9;
+ g.add(pSheet(SX,SZ));
+ const rails=new THREE.Group(),hooks=new THREE.Group(),mods=new THREE.Group(),cl=new THREE.Group(),n=Math.max(2,Math.ceil(RLn/1.2));
+ [-1,1].forEach(s=>{const z=s*rz;purlin(g,SX,z+.03);const r=railMesh(RLn,AL());r.position.set(0,RB,z);rails.add(r);
+  for(let i=0;i<n;i++){const x=Math.round((-RLn/2+.2+i*(RLn-.4)/(n-1))/RL)*RL,h=mkHook(false);h.position.set(x,0,z+.03);hooks.add(h)}
+  const m=mkMid(false,false);m.position.set(0,RB,z);cl.add(m);
+  const e1=mkEnd(false,false);e1.position.set(xR,RB,z);cl.add(e1);const e2=mkEnd(false,false);e2.position.set(-xR,RB,z);e2.scale.x=-1;cl.add(e2)});
+ [-1,1].forEach(s=>{const m=modFlat(it);m.position.set(s*(w/2+gap/2),RB+.04,0);mods.add(m)});
+ g.add(hooks,rails,mods,cl);xg(hooks,.22);xg(rails,.45);xg(mods,.9);xg(cl,1.2);
+ pDim(g,[-xR-.4,RB+.05,-rz],[-xR-.4,RB+.05,rz],"Rail spacing "+Math.round(rz*2000)+" mm",.22,[-.5,0,0]);pDim(g,[-w-gap/2,RB+.1,l/2+.15],[w+gap/2,RB+.1,l/2+.15],"2 modules, "+Math.round((2*w+gap)*1000)+" mm",.22,[0,.15,.1]);
+ return{g,ex:true,cam:[4.4,3.2,5.0],tgt:[0,.25,0],fl:4.2,gy:-RA-.101}}
+function pMnt(id){return id==="rail"?pRail():id==="hook"?pHook():id==="asm"?pAsm():pClampView(id)}
+function pClampView(id){const g=new THREE.Group();g.add(id==="mid"?mkMid(true,true):mkEnd(true,true));
+ pDim(g,[-.01,.085,.03],[.01,.085,.03],"20 mm gap",.016,[0,.02,0]);
+ return{g,ex:true,cam:id==="mid"?[.14,.13,.17]:[.15,.13,.17],tgt:[id==="mid"?0:.01,.055,0],fl:.12,gy:-.002}}
+// ---------- list, specs, tables ----------
+function pPrice(c,x){const U=PRICE();return c==="mnt"?(x.key?php(U[x.key]):""):php(x.price)}
+function pList(){$("pList").innerHTML=Object.keys(PG).map(c=>`<h2 style="margin:${c==="mod"?0:14}px 0 8px;font-size:14px;color:var(--mu)">${PG[c]}</h2>`+pItems(c).map(x=>`<button class="btn${P3.cat===c&&P3.id===x.id?" on":""}" data-pc="${c}" data-pi="${x.id}">${pnm(x)}<small>${pPrice(c,x)}</small></button>`).join("")).join("")}
+const pnm=x=>x.model||x.name;
+function pSpec(){const it=pCur(),U=PRICE(),c=P3.cat;let t=[],extra="";
+ if(c==="mod"){t=[["Rated power",it.w+" W"],["Voc / Vmp",it.voc+" V / "+it.vmp+" V"],["Isc",it.isc+" A"],["Size",Math.round(it.l*1000)+" × "+Math.round(it.wd*1000)+" × 35 mm"],["Frame",isDark(it)?"Black anodized aluminium":"Silver anodized aluminium"],["Price each",php(it.price)]];extra=`<button class="btn pri" id="pMountBtn" style="margin-top:10px">See how it mounts</button>`}
+ else if(c==="inv")t=[["Rated output",it.kw+" kW"],["Type",it.type],["Max DC voltage",it.maxDcV+" V"],["MPPT start voltage",it.mpptMin+" V"],["MPPT inputs",it.mppts],["Max PV current per input",it.maxA+" A"],["Price each",php(it.price)]];
+ else if(c==="bat")t=[["Nominal voltage","51.2 V"],["Capacity",Math.round(it.kwh*1000/51.2)+" Ah"],["Energy",it.kwh+" kWh"],["Units in your design",S.sel.qty],["Price each",php(it.price)]];
+ else{const m={rail:[["Length","4200 mm"],["Profile","40 × 40 mm with T-slot"],["Material","Anodized aluminium"],["Used","about 2.26 m per panel"]],
+  hook:[["Type","Stainless roof hook"],["Base plate","36 × 110 mm"],["Fixing","2 lag screws into the purlin, EPDM seal"],["Used","1.5 per panel"]],
+  mid:[["Gap between modules","20 mm"],["Fixing","M8 bolt into a T-nut in the rail"],["Used","2 for every panel after the first in a row"]],
+  end:[["Fixing","M8 bolt into a T-nut in the rail"],["Used","4 per row of panels"]],
+  asm:[["Roof","Corrugated sheet on purlins"],["Layout","Hooks, 2 rails per module, mid and end clamps"]]}[it.id];t=m.slice();
+  if(it.key)t.push(["Price each",php(U[it.key])]);
+  if(it.id==="asm")extra=`<label style="margin-top:10px">Module shown</label><select id="pAsmMod">${optsGrouped(CAT.mod,x=>x.model)}</select>`}
+ $("pTitle").textContent=pnm(it);
+ $("pSpec").innerHTML=`<table>${t.map(r=>`<tr><td style="color:var(--mu)">${r[0]}</td><td class="n">${r[1]}</td></tr>`).join("")}</table>${extra}<p class="todo">Catalog values drive the sizes and labels. Other dimensions (inverter and battery cases, hardware) are typical values, so these are illustrative models and not manufacturer drawings.</p>`;
+ if(it.id==="asm"&&c==="mnt")$("pAsmMod").value=P3.mod;
+ const p=S.panels,rows=Math.ceil(p/12),L=[["Mounting rails, 4.2 m",Math.ceil(p*2.26/4.2),"rail_4_2m"],["Roof hooks",Math.ceil(p*1.5),"roof_hook"],["Mid clamps",Math.max(0,p-rows)*2,"clamp"],["End clamps",rows*4,"clamp"]];
+ $("pMt").innerHTML=`<p style="margin:0 0 8px;color:var(--mu)">${p} panels of ${S.watts} W in ${rows} row${rows>1?"s":""}</p><table><tr><th>Part</th><th class="n">Qty</th><th class="n">Each</th><th class="n">Total</th></tr>${L.map(x=>`<tr><td>${x[0]}</td><td class="n">${x[1]}</td><td class="n">${php(U[x[2]])}</td><td class="n">${php(x[1]*U[x[2]])}</td></tr>`).join("")}<tr><th>Total</th><th></th><th></th><th class="n">${php(L.reduce((a,x)=>a+x[1]*U[x[2]],0))}</th></tr></table>`}
+// ---------- viewer ----------
+function pDisp(o){o.traverse(c=>{if(c.geometry)c.geometry.dispose();if(c.material)[].concat(c.material).forEach(m=>{if(m.map)m.map.dispose();m.dispose()})})}
+function pEx(){P3.ex=(+$("pEx").value)/100;if(P3.grp)P3.grp.traverse(o=>{if(o.userData.bdy!==undefined)o.position.y=o.userData.by+o.userData.bdy*P3.ex})}
+function pDims(){if(P3.grp)P3.grp.traverse(o=>{if(o.userData.dim)o.visible=$("pDim").checked})}
+function pCam(){if(!P3.cv)return;const v=P3.cv;P3.cam.position.set(v.cam[0],v.cam[1],v.cam[2]);P3.oc.target.set(v.tgt[0],v.tgt[1],v.tgt[2]);P3.oc.update()}
+function pShow(){if(!P3.ready)return;if(P3.grp){P3.sc.remove(P3.grp);pDisp(P3.grp);P3.grp=null}if(P3.fl){P3.sc.remove(P3.fl);pDisp(P3.fl)}
+ const c=P3.cat,it=pCur(),b=c==="mod"?pMod(it):c==="inv"?pInv(it):c==="bat"?pBat(it):pMnt(it.id);
+ b.g.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true}});P3.sc.add(b.g);P3.grp=b.g;
+ const f=new THREE.Group(),fl=b.fl,pn=new THREE.Mesh(new THREE.PlaneGeometry(fl*4,fl*4),new THREE.MeshStandardMaterial({color:0x101828,roughness:1,metalness:0}));pn.rotation.x=-Math.PI/2;pn.position.y=(b.gy||0)-.001;pn.receiveShadow=true;f.add(pn);
+ const gh=new THREE.GridHelper(fl*4,20,0x2a3a5a,0x18233a);gh.position.y=pn.position.y+.001;f.add(gh);P3.sc.add(f);P3.fl=f;
+ const dl=P3.dl,B=fl*1.6;dl.position.set(fl*1.2,fl*2.5,fl*1.5);Object.assign(dl.shadow.camera,{left:-B,right:B,top:B,bottom:B,near:fl*.05,far:fl*9});dl.shadow.camera.updateProjectionMatrix();
+ P3.cv={cam:b.cam,tgt:b.tgt};P3.oc.minDistance=fl*.15;P3.cam.far=Math.max(50,fl*40);P3.cam.updateProjectionMatrix();pCam();
+ $("pExRow").hidden=!b.ex;$("pEx").value=0;pEx();pDims()}
+async function initParts(){if(!P3.init){P3.init=true;P3.id=S.sel.mod;P3.mod=S.sel.mod}
+ pList();pSpec();
+ if(P3.ready){const el=$("p3c");P3.rd.setSize(el.clientWidth||640,el.clientHeight||480);return}
+ if(P3.loading||P3.failed)return;P3.loading=true;const mg=$("pMsg");mg.hidden=false;mg.textContent="Loading the 3D view…";
+ try{await needThree()}catch(e){P3.loading=false;P3.failed=true;mg.textContent="The 3D view needs internet access to load three.js. The specs and mounting table still work.";return}
+ const el=$("p3c"),W=()=>el.clientWidth||640,H=()=>el.clientHeight||480;
+ const sc=new THREE.Scene();sc.background=new THREE.Color(0x0a0f1a);const cam=new THREE.PerspectiveCamera(40,W()/H(),.01,100);
+ const rd=new THREE.WebGLRenderer({antialias:true});rd.setPixelRatio(Math.min(devicePixelRatio||1,2));rd.setSize(W(),H());rd.shadowMap.enabled=true;rd.shadowMap.type=THREE.PCFSoftShadowMap;rd.domElement.style.touchAction="none";el.appendChild(rd.domElement);
+ const oc=new THREE.OrbitControls(cam,rd.domElement);oc.maxPolarAngle=Math.PI/2.02;oc.autoRotateSpeed=1.6;oc.autoRotate=$("pSpin").checked;
+ sc.add(new THREE.AmbientLight(0xffffff,.6));sc.add(new THREE.HemisphereLight(0xbcd0ff,0x1a2238,.5));
+ const dl=new THREE.DirectionalLight(0xffffff,.9);dl.castShadow=true;dl.shadow.mapSize.set(2048,2048);dl.shadow.bias=-.0004;sc.add(dl);sc.add(dl.target);
+ const fl2=new THREE.DirectionalLight(0x9bb8ff,.35);fl2.position.set(-3,2,-4);sc.add(fl2);
+ Object.assign(P3,{sc,cam,rd,oc,dl});
+ new ResizeObserver(()=>{if(!el.clientWidth)return;cam.aspect=W()/H();cam.updateProjectionMatrix();rd.setSize(W(),H())}).observe(el);
+ (function loop(){requestAnimationFrame(loop);if(!$("parts").classList.contains("on"))return;oc.update();rd.render(sc,cam)})();
+ P3.ready=true;P3.loading=false;mg.hidden=true;pShow()}
+$("pList").onclick=e=>{const b=e.target.closest("[data-pc]");if(!b)return;P3.cat=b.dataset.pc;P3.id=b.dataset.pi;if(P3.cat==="mod")P3.mod=P3.id;pList();pSpec();pShow()};
+$("pSpec").onclick=e=>{if(e.target.closest("#pMountBtn")){P3.cat="mnt";P3.id="asm";pList();pSpec();pShow()}};
+$("pSpec").onchange=e=>{if(e.target.id==="pAsmMod"){P3.mod=e.target.value;pShow()}};
+$("pEx").oninput=pEx;$("pDim").onchange=pDims;$("pSpin").onchange=()=>{if(P3.oc)P3.oc.autoRotate=$("pSpin").checked};$("pReset").onclick=pCam;
+// ---- Panel builder: drag and drop protection devices onto DIN rails ----
+const PD={pvb:{n:"PV DC breaker",w:2,k:"prot_pv_dc_breaker",ac:"#f2a900",pre:"DC ",am:1,sub:"2P · 1000 V DC"},acb:{n:"AC breaker",w:2,k:"prot_ac_breaker",ac:"#4ea1ff",pre:"C",am:1,sub:"2P · 230 V~ · 6 kA"},
+ bmc:{n:"Battery MCCB",w:4,h:110,k:"prot_battery_mccb",ac:"#e5484d",pre:"",am:1,dk:1,sub:"2P · 125 V DC"},spdd:{n:"DC surge protector",w:2,k:"prot_spd_dc",ac:"#3ecf8e",pre:"SPD DC",spd:1,sub:"Type 2 · 40 kA"},
+ spda:{n:"AC surge protector",w:2,k:"prot_spd_ac",ac:"#3ecf8e",pre:"SPD AC",spd:1,sub:"Type 2 · 385 V"},iso:{n:"DC isolator",w:3,k:"dc_isolator",iso:1},mtr:{n:"kWh meter",w:5,k:"kwh_meter",mt:1},bus:{n:"Earth / neutral bar",w:6,h:50,bus:1},
+ mcb1:{n:"MCB 1P",w:1,k:"prot_mcb1",ac:"#4ea1ff",pre:"C",am:1,da:16,sub:"1P · 6 kA"},mcb3:{n:"MCB 3P",w:3,k:"prot_mcb3",ac:"#4ea1ff",pre:"C",am:1,da:32,sub:"3P · 400 V~ · 6 kA"},mcb4:{n:"MCB 4P",w:4,k:"prot_mcb4",ac:"#4ea1ff",pre:"C",am:1,da:32,sub:"4P · 400 V~ · 6 kA"},
+ rcd2:{n:"RCD 2P 30 mA (Type A)",w:2,k:"prot_rcd2",ac:"#2fb8a6",pre:"RCD ",am:1,da:40,test:1,sub:"2P · 30 mA · Type A"},rcd4:{n:"RCD 4P 30 mA (Type A)",w:4,k:"prot_rcd4",ac:"#2fb8a6",pre:"RCD ",am:1,da:40,test:1,sub:"4P · 30 mA · Type A"},
+ rcdb:{n:"RCD 2P 30 mA (Type B)",w:4,k:"prot_rcdb",ac:"#b86bff",pre:"RCD B ",am:1,da:40,test:1,sub:"2P · 30 mA · Type B (DC sensitive)"},rcbo:{n:"RCBO 1P+N 30 mA",w:2,k:"prot_rcbo",ac:"#2fb8a6",pre:"RCBO ",am:1,da:16,test:1,sub:"1P+N · 30 mA · 6 kA"},
+ ctc2:{n:"Contactor 2P",w:2,k:"ctc2",ctc:1,am:1,da:25,ac:"#f2a900",sub:"2NO · coil 230 V~"},ctc4:{n:"Contactor 4P",w:4,k:"ctc4",ctc:1,am:1,da:40,ac:"#f2a900",sub:"4NO · coil 230 V~"},
+ dcf:{n:"DC fuse holder",w:1,k:"dc_fuse",fuse:1,am:1,da:16,ac:"#f2a900",sub:""},ats:{n:"Changeover switch 2P",w:4,k:"ats2",ats:1,am:1,da:63,ac:"#e5484d",sub:"I – 0 – II"},ais:{n:"AC isolator 2P",w:2,k:"ac_iso2",ac:"#e5484d",pre:"",am:1,da:63,sub:"2P · 230 V~"}};
+const PNY=r=>95+r*140,PSTD=[6,10,16,20,25,32,40,50,63,80,100,125,160,200,250],pnStd=n=>PSTD.find(v=>v>=n)||250;
+const ENC=[["e12","1 row · 12 modules",1,12,420],["e24","2 rows · 24 modules",2,12,780],["e36","3 rows · 36 modules",3,12,1150],["e54","3 rows · 54 modules",3,18,1750],["e72","4 rows · 72 modules",4,18,2300],["e96","3 rows · 96 modules (wide)",3,32,3400]];
+const PWC={L:["L (brown)","#8b5a2b"],N:["N (blue)","#2f6fd6"],E:["Earth (green)","#2fa84f"],P:["DC+ (red)","#d33a3a"],M:["DC− (black)","#222"]};
+const PCAT={"Breakers":["pvb","acb","mcb1","mcb3","mcb4","bmc","dcf"],"RCD / RCBO":["rcd2","rcd4","rcdb","rcbo"],"Contactors & switches":["ctc2","ctc4","ats","ais","iso"],"Surge & earth":["spdd","spda","bus"],"Metering":["mtr"]};
+const PN={it:[],w:[],sel:null,selW:null,pend:null,mode:"move",wid:0,id:0,gh:null,drag:null,enc:ENC[5],cat:"Breakers",note:""};
+const pnA=t=>pnStd(pnNeed()[t]||PD[t].da||16);
+const pnScr=d=>{let s="";const H=d.h||90;for(let k=0;k<d.w;k++){const x=k*20+10;[9,H-9].forEach(y=>s+=`<circle cx="${x}" cy="${y}" r="5.5" fill="#b7bdc9" stroke="#7a8394"/><line x1="${x-3}" y1="${y}" x2="${x+3}" y2="${y}" stroke="#555"/>`)}return s};
+const pnNeed=()=>({pvb:Math.ceil((+$("iSc").value||13.8)*1.56),acb:E.aB,bmc:E.bB||0});
+function pnArt(t,a){const d=PD[t],W=d.w*20,H=d.h||90,ln=`stroke="#8b94a5"`;let s="";
+ if(d.ctc)return`<rect width="${W}" height="${H}" rx="4" fill="url(#pdg)" ${ln}/>${pnScr(d)}<rect x="6" y="${H*.3}" width="${W-12}" height="${H*.3}" rx="2" fill="#aab3c2"/><text x="${W/2}" y="${H*.3+14}" text-anchor="middle" font-size="9" font-weight="700" fill="#1a2030">KM ${a} A</text><text x="${W/2}" y="${H*.7}" text-anchor="middle" font-size="6.5" fill="#ccd">A1 · A2</text><text x="${W/2}" y="${H*.8}" text-anchor="middle" font-size="6" fill="#ccd">${d.sub}</text>`;
+ if(d.ats)return`<rect width="${W}" height="${H}" rx="4" fill="url(#pdg)" ${ln}/>${pnScr(d)}<circle cx="${W/2}" cy="${H*.46}" r="19" fill="#e5484d" stroke="#7a1d20"/><rect x="${W/2-3}" y="${H*.46-24}" width="6" height="26" rx="2" fill="#fff" transform="rotate(35 ${W/2} ${H*.46})"/><text x="${W/2}" y="${H*.84}" text-anchor="middle" font-size="7" fill="#ccd">${d.sub} · ${a} A</text>`;
+ if(d.fuse)return`<rect width="${W}" height="${H}" rx="3" fill="url(#pbg)" ${ln}/>${pnScr(d)}<rect x="4" y="${H*.32}" width="${W-8}" height="${H*.36}" rx="3" fill="#d9d2b8" stroke="#8a7e55"/><text x="${W/2}" y="${H*.32+H*.18+3}" text-anchor="middle" font-size="7" fill="#333">${a}</text>`;
+ if(d.iso)return`<rect width="${W}" height="${H}" rx="4" fill="url(#pbg)" ${ln}/><circle cx="${W/2}" cy="${H*.42}" r="22" fill="#f2c14e" stroke="#b8890f"/><rect x="${W/2-4}" y="${H*.42-26}" width="8" height="30" rx="3" fill="#d33a3a" transform="rotate(-30 ${W/2} ${H*.42})"/><text x="${W/2}" y="${H*.86}" text-anchor="middle" font-size="7" font-weight="700" fill="#333">DC ISOLATOR</text><text x="${W/2}" y="${H*.94}" text-anchor="middle" font-size="6" fill="#555">1000 V · 32 A</text>`;
+ if(d.mt)return`<rect width="${W}" height="${H}" rx="4" fill="#f4f6f8" ${ln}/><rect x="8" y="14" width="${W-16}" height="26" rx="2" fill="#0e1a16"/><text x="${W/2}" y="32" text-anchor="middle" font-size="12" font-family="monospace" fill="#5df0a2">01234.5 kWh</text><circle cx="16" cy="58" r="3" fill="#3ecf8e"/><circle cx="28" cy="58" r="3" fill="#f2a900"/><rect x="40" y="52" width="${W-52}" height="12" fill="#dde2ea"/><text x="${W/2}" y="82" text-anchor="middle" font-size="7" fill="#444">230 V~ · 50 Hz · 60 A</text>`;
+ if(d.bus)return`<rect width="${W}" height="${H}" rx="3" fill="#8a93a3" ${ln}/><rect x="4" y="12" width="${W-8}" height="26" rx="2" fill="#b87333"/>${Array.from({length:d.w*2},(_,i)=>`<circle cx="${10+i*9.5}" cy="25" r="3" fill="#5a3a1a"/>`).join("")}<text x="${W/2}" y="46" text-anchor="middle" font-size="7" fill="#fff">PE / N</text>`;
+ const bg=d.dk?"url(#pdg)":"url(#pbg)",tc=d.dk?"#fff":"#222";s+=`<rect width="${W}" height="${H}" rx="4" fill="${bg}" ${ln}/>`;
+ for(let k=0;k<d.w;k++){const x=k*20+10;[9,H-9].forEach(y=>s+=`<circle cx="${x}" cy="${y}" r="5.5" fill="#b7bdc9" stroke="#7a8394"/><line x1="${x-3}" y1="${y}" x2="${x+3}" y2="${y}" stroke="#555"/>`)}
+ if(d.spd)s+=`<rect x="5" y="${H*.3}" width="${W-10}" height="16" rx="2" fill="#3ecf8e"/><text x="${W/2}" y="${H*.3+12}" text-anchor="middle" font-size="9" font-weight="700" fill="#06331f">OK</text><text x="${W/2}" y="${H*.22}" text-anchor="middle" font-size="8" font-weight="700" fill="${tc}">${d.pre}</text>`;
+ else{const lw=d.dk?W-16:12,lh=d.dk?H*.3:H*.28,n=d.dk?1:d.w;for(let k=0;k<n;k++){const x=d.dk?8:k*20+4;s+=`<rect x="${x}" y="${H*.36}" width="${lw}" height="${lh}" rx="2" fill="#20242c" stroke="#000"/><rect x="${x}" y="${H*.36}" width="${lw}" height="${lh*.35}" rx="2" fill="${d.ac}"/>`}
+  s+=`<text x="${W/2}" y="${H*.24}" text-anchor="middle" font-size="${d.w<2||d.pre.length>3&&d.w<3?9:12}" font-weight="700" fill="${tc}">${d.pre}${a||""}${d.dk?" A":""}</text>`}
+ return s+(d.test?`<rect x="${W/2-7}" y="${H*.655}" width="14" height="7" rx="2" fill="#2f6fd6"/><text x="${W/2}" y="${H*.655+6}" text-anchor="middle" font-size="6" font-weight="700" fill="#fff">T</text>`:"")+`<text x="${W/2}" y="${H*.78}" text-anchor="middle" font-size="6.5" fill="${d.dk?"#ccd":"#555"}">${d.sub}</text><rect x="4" y="${H-22}" width="${W-8}" height="3" fill="${d.ac}"/>`}
+function pnDraw(){const need=pnNeed(),Q=PN.enc,W=Q[3]*20+80,Hh=PNY(Q[2]-1)+145,sv=$("pnl");
+ sv.setAttribute("viewBox",`0 0 ${W} ${Hh}`);sv.style.width=Math.max(42,W/720*100)+"%";sv.setAttribute("class",PN.mode==="wire"?"wm":"");
+ const tms=o=>{const d=PD[o.t],h=d.h||90,r=[];for(let s=0;s<2;s++)for(let k=0;k<d.w;k++)r.push({id:`${o.id}.${s}.${k}`,x:50+(o.x+k)*20+10,y:PNY(o.r)+(s?1:-1)*(h/2-9),s});return r},all=PN.it.flatMap(tms),tp=id=>all.find(t=>t.id===id);
+ sv.innerHTML=`<defs><linearGradient id="pbg" x1="0" x2="1"><stop offset="0" stop-color="#f3f5f8"/><stop offset="1" stop-color="#c9cfd9"/></linearGradient><linearGradient id="pdg" x1="0" x2="1"><stop offset="0" stop-color="#3b424e"/><stop offset="1" stop-color="#1c2028"/></linearGradient></defs>
+ <rect x="6" y="6" width="${W-12}" height="${Hh-12}" rx="10" fill="#cfd4dc" stroke="#7d8696" stroke-width="4"/><rect x="22" y="22" width="${W-44}" height="${Hh-44}" rx="4" fill="#e8ebf0" stroke="#aab1bf"/>
+ ${Array.from({length:Q[2]},(_,r)=>PNY(r)).map(y=>`<rect x="40" y="${y-7}" width="${Q[3]*20+20}" height="14" fill="#9aa3b2"/>${Array.from({length:Q[3]},(_,i)=>`<rect x="${52+i*20}" y="${y-2}" width="10" height="4" rx="2" fill="#6b7384"/>`).join("")}`).join("")}
+ ${PN.it.map(o=>`<g data-i="${o.id}" transform="translate(${50+o.x*20},${PNY(o.r)-(PD[o.t].h||90)/2})" style="cursor:grab">${pnArt(o.t,o.a)}${PN.sel===o.id?`<rect width="${PD[o.t].w*20}" height="${PD[o.t].h||90}" rx="4" fill="none" stroke="#f2a900" stroke-width="3"/>`:""}</g>`).join("")}
+ ${PN.w.map(w=>{const a=tp(w.a),b=tp(w.b);if(!a||!b)return"";const da=a.s?1:-1,db=b.s?1:-1,d=Math.min(70,Math.max(28,Math.hypot(a.x-b.x,a.y-b.y)/2)),p=`M${a.x} ${a.y}C${a.x} ${a.y+da*d} ${b.x} ${b.y+db*d} ${b.x} ${b.y}`;return`<g>${PN.selW===w.id?`<path d="${p}" fill="none" stroke="#f2a900" stroke-width="8" stroke-linecap="round" opacity=".6"/>`:""}<path d="${p}" fill="none" stroke="${PWC[w.c][1]}" stroke-width="3.2" stroke-linecap="round"/><path class="pw" data-w="${w.id}" d="${p}" fill="none" stroke="transparent" stroke-width="12"/></g>`}).join("")}
+ ${all.map(t=>`<circle class="pt" data-tm="${t.id}" cx="${t.x}" cy="${t.y}" r="5.5" fill="${PN.pend===t.id?"#f2a900":"#fff"}" fill-opacity="${PN.pend===t.id?1:.6}" stroke="#555"/>`).join("")}
+ ${PN.gh?`<g opacity=".7" transform="translate(${50+PN.gh.x*20},${PNY(PN.gh.r)-(PD[PN.gh.t].h||90)/2})">${pnArt(PN.gh.t,pnA(PN.gh.t))}<rect width="${PD[PN.gh.t].w*20}" height="${PD[PN.gh.t].h||90}" rx="4" fill="${PN.gh.ok?"#3ecf8e":"#e5484d"}" opacity=".3"/></g>`:""}`;
+ const s=PN.it.find(o=>o.id===PN.sel),sw=PN.w.find(x=>x.id===PN.selW);$("pnSel").hidden=!(s||sw);
+ if(s){$("pnSelN").textContent=PD[s.t].n;$("pnAmp").hidden=!PD[s.t].am;$("pnAmp").innerHTML=PSTD.map(v=>`<option${v===s.a?" selected":""}>${v}</option>`).join("")}else if(sw){$("pnSelN").textContent="Wire: "+PWC[sw.c][0];$("pnAmp").hidden=true}
+ const has=(...t)=>PN.it.filter(o=>t.includes(o.t)),U=PRICE(),row=(ok,t)=>`<div class="${ok?"ok":"bad"}">${ok?"✓":"✕"} ${t}</div>`,amp=(t,n)=>{const b=has(t);return b.length?row(b.some(o=>o.a>=n),`${PD[t].n}: ${b.map(o=>o.a+" A").join(", ")} (need at least ${n} A)`):row(false,`${PD[t].n} missing (need at least ${n} A)`)};
+ const rc=has("rcd2","rcd4","rcdb","rcbo"),wd=new Set(PN.w.flatMap(w=>[w.a,w.b].map(x=>+x.split(".")[0]))),un=PN.it.filter(o=>!wd.has(o.id)&&!PD[o.t].bus).length;
+ $("pnChk").innerHTML=(PN.note?`<p class="todo">${PN.note}</p>`:"")+amp("pvb",need.pvb)+row(has("iso").length>0,"DC isolator")+row(has("spdd").length>0,"DC surge protector")+amp("acb",need.acb)+row(has("spda").length>0,"AC surge protector")+row(rc.length>0,"RCD or RCBO on the AC side")+(rc.length?row(rc.some(o=>o.a>=need.acb),`RCD rating at least the AC breaker (${need.acb} A)`):"")+(S.bat>0?amp("bmc",need.bmc):"")+row(has("bus").length>0,"Earth bar")+row(PN.w.length>0&&un===0,PN.w.length?(un?`${un} part(s) have no wires`:`${PN.w.length} wires drawn, every part connected`):"No wires drawn yet")+`<p class="todo">Minimum ratings are estimates from your design (PV: 1.56 × module Isc). Many transformerless inverters need a Type B RCD or built-in DC fault detection: check the inverter datasheet. An electrician must confirm everything against local code.</p>`;
+ const c={};PN.it.forEach(o=>c[o.t]=(c[o.t]||0)+1);const pr=t=>PD[t].k?U[PD[t].k]:0,tot=Object.keys(c).reduce((a,t)=>a+c[t]*pr(t),0)+Q[4];
+ $("pnBom").innerHTML=`<table><tr><th>Part</th><th class="n">Qty</th><th class="n">Total</th></tr><tr><td>Enclosure, ${Q[1]}</td><td class="n">1</td><td class="n">${php(Q[4])}</td></tr>${Object.keys(c).map(t=>`<tr><td>${PD[t].n}</td><td class="n">${c[t]}</td><td class="n">${PD[t].k?php(c[t]*pr(t)):"—"}</td></tr>`).join("")}<tr><th>Total</th><th></th><th class="n">${php(tot)}</th></tr></table><p style="color:var(--mu);margin:8px 0 0">Modules used: ${PN.it.reduce((a,o)=>a+PD[o.t].w,0)} of ${Q[2]*Q[3]}${PN.w.length?" · "+PN.w.length+" wires drawn":""}</p>`}
+const pnPt=e=>{const sv=$("pnl"),p=sv.createSVGPoint();p.x=e.clientX;p.y=e.clientY;return p.matrixTransform(sv.getScreenCTM().inverse())};
+function pnSnap(t,p,ign){const d=PD[t],R=PN.enc,r=Math.max(0,Math.min(R[2]-1,Math.round((p.y-95)/140))),x=Math.max(0,Math.min(R[3]-d.w,Math.round((p.x-50)/20-d.w/2)));
+ return{t,r,x,ok:PN.it.every(o=>o===ign||o.r!==r||o.x+PD[o.t].w<=x||x+d.w<=o.x)}}
+function pnPal(){$("pnPal").innerHTML="<h2>Components</h2><div class=\"tabs\">"+Object.keys(PCAT).map(k=>`<button class="btn${k===PN.cat?" on":""}" data-pc="${k}">${k}</button>`).join("")+"</div>"+PCAT[PN.cat].map(t=>`<button class="btn" data-t="${t}" style="touch-action:none">${PD[t].n}<small>${php(UD[PD[t].k]||0)}</small></button>`).join("")+`<p class="todo">Drag a part onto a DIN rail. Drag placed parts to move them. Choose Draw wires, then click two terminals to connect them. Click a wire to select it, Delete removes it.</p>`}
+$("pnPal").onclick=e=>{const b=e.target.closest("[data-pc]");if(b){PN.cat=b.dataset.pc;pnPal()}};
+function pnWire(e){e.preventDefault();const t=e.target.closest("[data-tm]"),w=e.target.closest("[data-w]");
+ if(t){const id=t.dataset.tm;if(!PN.pend)PN.pend=id;else if(PN.pend!==id){PN.w.push({id:++PN.wid,a:PN.pend,b:id,c:$("pnWc").value});PN.pend=null}else PN.pend=null;PN.sel=PN.selW=null}
+ else if(w){PN.selW=+w.dataset.w;PN.sel=null;PN.pend=null}
+ else{const g=e.target.closest("[data-i]");PN.sel=g?+g.dataset.i:null;PN.selW=null;PN.pend=null}pnDraw()}
+function setEnc(id){const L=PN.it.length;PN.enc=ENC.find(e=>e[0]===id);$("pnEnc").value=id;PN.it=PN.it.filter(o=>o.r<PN.enc[2]&&o.x+PD[o.t].w<=PN.enc[3]);
+ const ids=new Set(PN.it.map(o=>o.id));PN.w=PN.w.filter(w=>[w.a,w.b].every(x=>ids.has(+x.split(".")[0])));PN.sel=PN.selW=PN.pend=null;PN.note=L>PN.it.length?`${L-PN.it.length} part(s) did not fit the smaller enclosure and were removed.`:"";pnDraw()}
+$("pnEnc").innerHTML=ENC.map(e=>`<option value="${e[0]}">${e[1]} · ${php(e[4])}</option>`).join("");$("pnEnc").value="e96";$("pnEnc").onchange=()=>setEnc($("pnEnc").value);
+document.querySelectorAll("[data-pm]").forEach(b=>b.onclick=()=>{PN.mode=b.dataset.pm;PN.pend=null;document.querySelectorAll("[data-pm]").forEach(x=>x.classList.toggle("on",x===b));$("pnWc").hidden=PN.mode!=="wire";pnDraw()});
+pnPal();
+$("pnPal").onpointerdown=e=>{const b=e.target.closest("[data-t]");if(!b)return;e.preventDefault();PN.drag={t:b.dataset.t,it:null}};
+$("pnl").onpointerdown=e=>{if(PN.mode==="wire"){pnWire(e);return}PN.selW=null;const g=e.target.closest("[data-i]");if(!g){PN.sel=null;pnDraw();return}e.preventDefault();const o=PN.it.find(x=>x.id==g.dataset.i);PN.sel=o.id;PN.drag={t:o.t,it:o};pnDraw()};
+document.addEventListener("pointermove",e=>{if(!PN.drag)return;const sv=$("pnl").getBoundingClientRect();if(e.clientX<sv.left||e.clientX>sv.right||e.clientY<sv.top||e.clientY>sv.bottom){if(PN.gh){PN.gh=null;pnDraw()}return}PN.gh=pnSnap(PN.drag.t,pnPt(e),PN.drag.it);pnDraw()});
+document.addEventListener("pointerup",()=>{const d=PN.drag,g=PN.gh;PN.drag=null;PN.gh=null;if(d&&g&&g.ok){if(d.it){d.it.r=g.r;d.it.x=g.x}else{const n=pnNeed(),o={id:++PN.id,t:d.t,r:g.r,x:g.x,a:PD[d.t].am?pnA(d.t):0};PN.it.push(o);PN.sel=o.id}}if(d)pnDraw()});
+$("pnAmp").onchange=()=>{const o=PN.it.find(x=>x.id===PN.sel);if(o){o.a=+$("pnAmp").value;pnDraw()}};
+$("pnDel").onclick=()=>{if(PN.selW)PN.w=PN.w.filter(x=>x.id!==PN.selW);else{const id=PN.sel;PN.it=PN.it.filter(o=>o.id!==id);PN.w=PN.w.filter(w=>![w.a,w.b].some(x=>x.split(".")[0]==id))}PN.sel=PN.selW=null;pnDraw()};
+$("pnClr").onclick=()=>{PN.it=[];PN.w=[];PN.sel=PN.selW=PN.pend=null;PN.note="";pnDraw()};
+const PKIT={hyb:[[0,"iso"],[0,"pvb"],[0,"spdd"],[1,"bmc"],[1,"acb"],[1,"rcd2"],[1,"spda"],[2,"mtr"],[2,"bus"]],gt:[[0,"iso"],[0,"pvb"],[0,"spdd"],[1,"acb"],[1,"rcd2"],[1,"spda"],[2,"mtr"],[2,"bus"]]};
+document.querySelectorAll("[data-kit]").forEach(b=>b.onclick=()=>{if(PN.enc[2]<3||PN.enc[3]<18)setEnc("e54");const nx=[0,0,0];PN.it=[];PN.w=[];PN.note="";PKIT[b.dataset.kit].forEach(k=>{const t=k[1];PN.it.push({id:++PN.id,t,r:k[0],x:nx[k[0]],a:PD[t].am?pnA(t):0});nx[k[0]]+=PD[t].w+1});PN.sel=null;pnDraw()});
+$("pnExp").onclick=()=>{const u=URL.createObjectURL(new Blob([new XMLSerializer().serializeToString($("pnl"))],{type:"image/svg+xml"})),a=document.createElement("a");a.href=u;a.download="panel-layout.svg";a.click();setTimeout(()=>URL.revokeObjectURL(u),1e3)};
 // render all
 function render(){E=elec();bomHTML();
  $("sum").innerHTML=[["Array",S.kwp.toFixed(2),"kWp"],["Inverter",S.inv,"kW"],["DC to AC",(S.kwp/S.inv).toFixed(2),"ratio"],["Battery",S.bat,"kWh"],["AC breaker",E.aB,"A"],["Est. cost",php(S.cost),S.sim&&!S.manual?"":"rough"]].map(s=>`<div class="stat"><small>${s[0]}</small><b>${s[1]}</b> <span>${s[2]}</span></div>`).join("");
  if(!ED.ready&&!ED.loading&&!ED.failed)$("stage").innerHTML=stage();syncEd();$("panelQty").value=S.panels;pickSync();drawLib();
  document.querySelectorAll("#wbTabs .btn").forEach((b,i)=>b.classList.toggle("on",i===wbi));$("wb").innerHTML=wbHTML();$("bom").innerHTML=bomHTML();
- $("loads").innerHTML=S.loads.length?`<table><tr><th>Appliance</th><th>Watts</th><th>Hours</th><th>Qty</th><th></th></tr>${S.loads.map((l,i)=>`<tr><td>${l.n}</td>${["w","h","q"].map(k=>`<td><input type="number" min="0" value="${l[k]}" data-f="${i}.${k}" style="width:76px"></td>`).join("")}<td><button class="btn" data-d="${i}" aria-label="Remove ${l.n}">Remove</button></td></tr>`).join("")}</table>`:`<p style="color:var(--mu)">Nothing added yet. Pick an appliance above.</p>`;
- $("rec").innerHTML=recHTML();drawSun();irr();roi();yld();plist()}
+ $("loads").innerHTML=S.loads.length?`<table><tr><th>Appliance</th><th>Watts</th><th>Used from – until</th><th>Hours</th><th>Qty</th><th></th></tr>${S.loads.map((l,i)=>`<tr><td>${esc(l.n)}</td>${["w"].map(k=>`<td><input type="number" min="0" value="${l[k]}" data-f="${i}.${k}" style="width:76px"></td>`).join("")}<td style="white-space:nowrap"><input type="time" value="${l.s||""}" data-f="${i}.s" style="width:112px"> – <input type="time" value="${l.e||""}" data-f="${i}.e" style="width:112px"></td>${["h","q"].map(k=>`<td><input type="number" min="0" step="any" value="${l[k]}" data-f="${i}.${k}" style="width:68px"></td>`).join("")}<td><button class="btn" data-d="${i}" aria-label="Remove ${esc(l.n)}">Remove</button></td></tr>`).join("")}</table>`:`<p style="color:var(--mu)">Nothing added yet. Pick an appliance above.</p>`;
+ $("rec").innerHTML=recHTML();$("lprof").innerHTML=profHTML();drawSun();irr();roi();yld();plist()}
 $("bomBtn").onclick=render;document.querySelector("#tool details").addEventListener("input",render);calc();
 route();
 </script>
