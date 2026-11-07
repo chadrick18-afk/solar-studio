@@ -56,6 +56,7 @@ td.n,th.n{text-align:right}
 .hero h1{font-size:34px;max-width:18ch}
 .card{cursor:pointer;text-align:left}.card:hover{border-color:var(--ac)}
 .ok{color:var(--ac2)}.bad{color:var(--rd)}
+#rmap.drawing,#rmap.drawing .leaflet-grab,#rmap.drawing .leaflet-dragging .leaflet-grab,#rmap.drawing .leaflet-interactive,#rmap.drawing .leaflet-marker-icon{cursor:crosshair!important}
 #pnl .pt,#pnl .pw{pointer-events:none}#pnl.wm .pt{pointer-events:all;cursor:crosshair}#pnl.wm .pt:hover{fill:#f2a900;fill-opacity:1}#pnl.wm .pw{pointer-events:stroke;cursor:pointer}
 .fl{stroke-dasharray:10 8;animation:fl .9s linear infinite}@keyframes fl{to{stroke-dashoffset:-18}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
@@ -74,10 +75,11 @@ td.n,th.n{text-align:right}
 
 <section id="tool">
  <h1>Solar tool</h1><p class="sub">Sizing summary, wiring diagram, and materials list for the current design.</p>
- <div class="box" style="margin-bottom:12px"><div class="g g5">
+ <div class="box" style="margin-bottom:12px"><div class="g" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
   <div><label>Setup</label><select id="topo"><option value="hybrid-no-export">Hybrid, no export</option><option value="hybrid-export">Hybrid, export</option><option value="grid-tied">Grid-tied</option><option value="off-grid">Off-grid</option></select></div>
   <div id="xpWrap"><label>Surplus solar goes to</label><select id="xprio"><option value="battery_first">Battery first, then grid</option><option value="export_first">Grid first (battery idle)</option></select></div>
   <div><label>Monthly use (kWh)</label><input type="number" id="mkwh" value="400" min="1"></div>
+  <div><label>Load profile</label><select id="lprofSel"><option value="aircon_day">Daytime aircon</option><option value="evening_peak">Evening peak</option><option value="flat">Flat (even all day)</option></select></div>
   <div><label>Latitude</label><input type="number" id="lat" value="14.5995" step="any"></div>
   <div><label>Longitude</label><input type="number" id="lon" value="120.9842" step="any"></div>
   <div style="align-self:end"><button class="btn pri" id="runBtn" style="width:100%">Run simulation</button></div></div>
@@ -173,6 +175,7 @@ td.n,th.n{text-align:right}
     <div><label>Panel width (m)</label><input type="number" id="rW" value="1.134" step="0.001"></div>
     <div><label>Layout</label><select id="rOri"><option value="auto">Best fit</option><option value="landscape">Landscape</option><option value="portrait">Portrait</option></select></div>
     <div><label>Edge setback (m)</label><input type="number" id="rSb" value="0.5" step="0.1" min="0"></div>
+    <div style="grid-column:1/-1"><label>Roof profile</label><select id="rType"></select><p id="rTypeNote" style="color:var(--mu);margin:6px 0 0;font-size:13px"></p></div>
     <div><label>Roof tilt (°)</label><input type="number" id="rTilt" value="15" min="0" max="90"></div>
     <div><label>Direction (°, 180 = south)</label><input type="number" id="rAz" value="180" min="0" max="360"></div>
     <div><label>Wall height (m, 3D view)</label><input type="number" id="rH" value="3" min="0" step="0.5"></div></div>
@@ -344,7 +347,17 @@ function bomHTML(){const r=bomRows(),t=r.reduce((a,x)=>a+x[3],0);S.cost=S.sim&&!
  return`<table><tr><th>Item</th><th>Qty</th><th class="n">Unit price</th><th class="n">Cost</th></tr>${r.map(x=>`<tr><td>${x[0]}</td><td>${x[1]}</td>${cell(x)}<td class="n">${php(x[3])}</td></tr>`).join("")}<tr><td colspan="3"><b>Materials subtotal</b></td><td class="n"><b>${php(t)}</b></td></tr></table>`+(S.extras>0?`<p style="color:var(--mu);margin:8px 0 0">Includes ${php(S.extras)} for extra parts added in the wiring editor.</p>`:"")+(S.sim?`<p style="color:var(--mu);margin:8px 0 0">Not in this list: labor, engineering and permitting, and the net-metering fee (about ${php(S.sim.summary.services_php)}). They are included in the estimated cost above.</p>`:"")}
 
 // roof mapper
-const mkFace=()=>({pts:[],closed:false,tilt:15,az:180,fit:null}),RM={map:null,faces:[mkFace()],cur:0,drawing:false,view:"2d",g:null,ready:false,loading:false,failed:false},cf=()=>RM.faces[RM.cur];
+const mkFace=()=>({pts:[],closed:false,tilt:15,az:180,type:"custom",fit:null}),RM={map:null,faces:[mkFace()],cur:0,drawing:false,view:"2d",g:null,ready:false,loading:false,failed:false},cf=()=>RM.faces[RM.cur];
+{let d=false;Object.defineProperty(RM,"drawing",{enumerable:true,get:()=>d,set:v=>{d=!!v;const el=document.getElementById("rmap");if(el)el.classList.toggle("drawing",d)}})}
+const RTYPES={
+ custom:{n:"Custom (set tilt yourself)",note:"Type any tilt and direction below."},
+ flat:{n:"Flat concrete deck (panels on racks)",tilt:10,az:180,note:"Panels sit on tilted racks facing south, so the direction is fixed at 180°. Row spacing to avoid shading is not modeled: leave extra room."},
+ shed:{n:"Shed / mono-pitch (one slope)",tilt:12,note:"One slope. The direction is the way the slope faces."},
+ gable:{n:"Gable (two slopes)",tilt:25,note:"Draw one face per side of the ridge. Adding a face copies this profile facing the opposite way."},
+ hip:{n:"Hip (four slopes)",tilt:22,note:"Draw one face per slope. Slopes facing north produce much less than the south-facing one."},
+ metal:{n:"Corrugated metal sheet",tilt:15,note:"Common low-pitch GI roof. Panels clamp to the purlins with roof hooks."},
+ tile:{n:"Clay or concrete tile (pitched)",tilt:30,note:"Steeper pitched roof. Hooks go under the tiles, which adds installation labor."}};
+function rtypeUI(){const f=cf(),t=RTYPES[f.type]||RTYPES.custom;$("rType").value=RTYPES[f.type]?f.type:"custom";$("rTypeNote").textContent=t.note}
 const R3={ready:false,loading:false,failed:false,mode:"orbit",faceMeshes:[],framed:false};
 const COMP=["North","North-east","East","South-east","South","South-west","West","North-west"],fname=(f,i)=>"Face "+(i+1)+(f.closed?" ("+COMP[Math.round(f.az/45)%8]+")":"");
 const KM=111320,gv=(id,d)=>{const v=parseFloat($(id).value);return Number.isFinite(v)&&v>0?v:d};
@@ -368,7 +381,7 @@ function roofTotal(){const c=RM.faces.filter(f=>f.fit);return c.length?c.reduce(
 function rchips(){$("faces").innerHTML=RM.faces.map((f,i)=>`<button class="btn${i===RM.cur?" on":""}" data-f="${i}">${fname(f,i)}${f.fit?": "+f.fit.n:""}</button>`).join("")+`<button class="btn" id="rAdd">+ Add face</button>`}
 function rstats(){const f=cf(),m=f.fit,el=$("rstats"),tl=f.tilt*Math.PI/180;
  if(!m){el.innerHTML=`<p style="color:var(--mu);margin:0">${f.pts.length?"Click the remaining corners, then press Finish outline.":"Press Draw roof, click each corner of this roof face, then Finish outline."}</p>`}
- else el.innerHTML=`<table><tr><td>Footprint</td><td class="n">${m.area.toFixed(1)} m²</td></tr><tr><td>Sloped area</td><td class="n">${(m.area/Math.cos(tl)).toFixed(1)} m²</td></tr><tr><td>Panels on this face</td><td class="n"><b>${m.n}</b></td></tr><tr><td>Suggested direction</td><td class="n">${m.az}°</td></tr></table>`;
+ else el.innerHTML=`<table><tr><td>Roof profile</td><td class="n">${(RTYPES[f.type]||RTYPES.custom).n.replace(/ \(.*/,"")}</td></tr><tr><td>Footprint</td><td class="n">${m.area.toFixed(1)} m²</td></tr><tr><td>Sloped area</td><td class="n">${(m.area/Math.cos(tl)).toFixed(1)} m²</td></tr><tr><td>Panels on this face</td><td class="n"><b>${m.n}</b></td></tr><tr><td>Suggested direction</td><td class="n">${m.az}°</td></tr></table>`;
  const tot=roofTotal(),e=$("rfit"),need=S.panels;
  if(tot==null){e.textContent="";$("rNote").textContent="";return}
  const faces=RM.faces.filter(x=>x.fit).length,dom=RM.faces.reduce((b,x)=>x.fit&&(!b||x.fit.n>b.fit.n)?x:b,null);
@@ -380,7 +393,10 @@ function rdraw(){RM.faces.forEach(f=>f.fit=rfitFace(f));
   if(on)P.forEach(p=>L.circleMarker(p,{radius:4,color:col,fillOpacity:1}).addTo(RM.g));
   if(f.fit){const g=f.fit.g,c=Math.cos(g.ang),s=Math.sin(g.ang);g.out.forEach(([x,y])=>{const q=[[x,y],[x+g.pw,y],[x+g.pw,y+g.ph],[x,y+g.ph]].map(p=>fromXY([p[0]*c-p[1]*s,p[0]*s+p[1]*c],f.fit.la,f.fit.lo));L.polygon(q,{color:"#9ec1ff",weight:1,fillColor:on?"#2a4a8a":"#3a4560",fillOpacity:.75,interactive:false}).addTo(RM.g)})}})}
  S.roofMax=roofTotal();rchips();rstats();r3faces();if(E)render()}
-function useFace(i){RM.cur=i;RM.drawing=false;$("rTilt").value=cf().tilt;$("rAz").value=cf().az;$("rMsg").textContent="";rdraw();drawSun()}
+function useFace(i){RM.cur=i;RM.drawing=false;$("rTilt").value=cf().tilt;$("rAz").value=cf().az;rtypeUI();$("rMsg").textContent="";rdraw();drawSun()}
+$("rType").innerHTML=Object.keys(RTYPES).map(k=>`<option value="${k}">${RTYPES[k].n}</option>`).join("");
+$("rType").onchange=()=>{const f=cf(),t=RTYPES[$("rType").value];f.type=$("rType").value;if(t.tilt!=null){f.tilt=t.tilt;$("rTilt").value=t.tilt}if(t.az!=null){f.az=t.az;$("rAz").value=t.az}rtypeUI();rdraw();drawSun()};
+rtypeUI();
 async function initMap(){if(RM.ready){RM.map.invalidateSize();return}if(RM.loading||RM.failed)return;RM.loading=true;
  try{const l=document.createElement("link");l.rel="stylesheet";l.href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css";document.head.appendChild(l);await loadJs("https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js")}
  catch(e){RM.loading=false;RM.failed=true;$("rmap").textContent="The map needs internet access to load. You can still use the sun path below.";return}
@@ -393,17 +409,17 @@ $("rgo").onclick=async()=>{const q=$("rq").value.trim();if(!q||!RM.ready)return;
  try{const r=await fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&q="+encodeURIComponent(q)),d=await r.json();if(d[0]){RM.map.setView([+d[0].lat,+d[0].lon],18);$("rMsg").textContent=""}else $("rMsg").textContent="No match. Try a nearby city or barangay."}catch(e){$("rMsg").textContent="Search failed. Check your connection."}};
 $("rq").onkeydown=e=>{if(e.key==="Enter")$("rgo").click()};
 $("faces").onclick=e=>{const b=e.target.closest("button");if(!b)return;
- if(b.id==="rAdd"){RM.faces.push(mkFace());useFace(RM.faces.length-1);if(RM.ready){RM.drawing=true;$("rMsg").textContent="Click each corner of the new roof face."}}
+ if(b.id==="rAdd"){const pr=cf(),nf=mkFace();if(pr.type==="gable"){nf.type="gable";nf.tilt=pr.tilt;nf.az=(pr.az+180)%360}RM.faces.push(nf);useFace(RM.faces.length-1);if(RM.ready){RM.drawing=true;$("rMsg").textContent="Click each corner of the new roof face."}}
  else if(b.dataset.f!=null)useFace(+b.dataset.f)};
 $("rDraw").onclick=()=>{if(!RM.ready)return;const f=cf();f.pts=[];f.closed=false;RM.drawing=true;$("rMsg").textContent="Click each roof corner on the map.";rdraw()};
-$("rFin").onclick=()=>{const f=cf();if(f.pts.length<3){$("rMsg").textContent="Add at least 3 corners first.";return}f.closed=true;RM.drawing=false;$("rMsg").textContent="";rdraw();if(f.fit){f.az=f.fit.az;$("rAz").value=f.az;rdraw()}drawSun()};
+$("rFin").onclick=()=>{const f=cf();if(f.pts.length<3){$("rMsg").textContent="Add at least 3 corners first.";return}f.closed=true;RM.drawing=false;$("rMsg").textContent="";rdraw();if(f.fit&&f.type!=="flat"){f.az=f.fit.az;$("rAz").value=f.az;rdraw()}drawSun()};
 $("rClr").onclick=()=>{const f=cf();f.pts=[];f.closed=false;RM.drawing=false;$("rMsg").textContent="";rdraw()};
 $("rDel").onclick=()=>{if(RM.faces.length>1){RM.faces.splice(RM.cur,1);useFace(Math.max(0,RM.cur-1))}else $("rClr").click()};
 ["rL","rW","rOri","rSb"].forEach(i=>$(i).addEventListener("input",()=>{rdraw();drawSun()}));
 $("rTilt").addEventListener("input",()=>{cf().tilt=parseFloat($("rTilt").value)||0;rstats();r3faces();drawSun()});
 $("rAz").addEventListener("input",()=>{cf().az=parseFloat($("rAz").value)||0;rchips();r3faces();drawSun()});
 function sendSite(){const cl=RM.faces.filter(f=>f.fit),dom=cl.reduce((b,x)=>!b||x.fit.n>b.fit.n?x:b,null);
- if(cl.length){$("lat").value=(cl.reduce((a,f)=>a+f.fit.la,0)/cl.length).toFixed(5);$("lon").value=(cl.reduce((a,f)=>a+f.fit.lo,0)/cl.length).toFixed(5);S.tilt=dom.tilt;S.az=dom.az;S.faces=cl.map(f=>({name:fname(f,RM.faces.indexOf(f)),tilt:f.tilt,azimuth:f.az,max_panels:f.fit.n}))}
+ if(cl.length){$("lat").value=(cl.reduce((a,f)=>a+f.fit.la,0)/cl.length).toFixed(5);$("lon").value=(cl.reduce((a,f)=>a+f.fit.lo,0)/cl.length).toFixed(5);S.tilt=dom.tilt;S.az=dom.az;S.faces=cl.map(f=>({name:fname(f,RM.faces.indexOf(f)),tilt:f.tilt,azimuth:f.az,max_panels:f.fit.n,roof_type:f.type||"custom"}))}
  else{if(RM.ready){$("lat").value=RM.map.getCenter().lat.toFixed(5);$("lon").value=RM.map.getCenter().lng.toFixed(5)}S.tilt=cf().tilt;S.az=cf().az;S.faces=[]}
 }
 $("rSend").onclick=()=>{sendSite();location.hash="tool";runSim()};
@@ -439,16 +455,16 @@ function xpShow(){$("xpWrap").style.display=$("topo").value==="hybrid-export"?""
 $("topo").addEventListener("change",xpShow);xpShow();
 // simulation
 function applySim(d){const s=d.summary;S.sim=d;S.U=d.assumptions.unit_prices;S.manual=false;Object.assign(S,{kwp:s.system_kw,inv:s.inverter_kw,bat:s.battery_kwh,panels:s.panel_count,watts:s.panel_watts,cost:s.total_cost_php})}
-async function runSim(retry){const m=$("simMsg"),b={topology:$("topo").value,monthly_kwh:+$("mkwh").value,lat:+$("lat").value,lon:+$("lon").value,panel_watts:S.watts,tilt:S.tilt==null?15:S.tilt,azimuth:S.az==null?180:S.az,extra_materials_php:Math.round(S.extras||0),pv_run_m:E.pvD*(ED.ready?Math.max(1,arrays().length):1),ac_run_m:E.acD,bat_run_m:E.batD,tariff_escalation_pct:+$("esc").value,degradation_pct:+$("deg").value,export_priority:$("topo").value==="hybrid-export"?$("xprio").value:"battery_first"};
+async function runSim(retry){const m=$("simMsg"),b={topology:$("topo").value,monthly_kwh:+$("mkwh").value,lat:+$("lat").value,lon:+$("lon").value,panel_watts:S.watts,tilt:S.tilt==null?15:S.tilt,azimuth:S.az==null?180:S.az,extra_materials_php:Math.round(S.extras||0),pv_run_m:E.pvD*(ED.ready?Math.max(1,arrays().length):1),ac_run_m:E.acD,bat_run_m:E.batD,tariff_escalation_pct:+$("esc").value,degradation_pct:+$("deg").value,export_priority:$("topo").value==="hybrid-export"?$("xprio").value:"battery_first",load_profile:$("lprofSel").value};
  if($("tariff").value!=="")b.retail_rate=+$("tariff").value;if(S.manual)b.system_kw=S.panels*S.watts/1000;if(S.faces&&S.faces.length)b.faces=S.faces;
  {const iv=byId(CAT.inv,S.sel.inv),bt=byId(CAT.bat,S.sel.bat);if(iv)b.inverter_kw=iv.kw;if(S.sel.bat==="none")b.battery_kwh=0;else if(bt)b.battery_kwh=+(bt.kwh*S.sel.qty).toFixed(2);const po=sendPO();if(Object.keys(po).length)b.price_overrides=po}
  m.textContent="Running simulation…";let r,d;
  try{r=await fetch("/api/simulate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});d=await r.json()}
  catch(e){m.textContent="Cannot reach the server. Run uvicorn pv_api:app, then open this page at http://localhost:8000/.";return}
  if(!r.ok){m.textContent="Request failed ("+r.status+"): "+(typeof d.detail==="string"?d.detail:JSON.stringify(d.detail));return}
- applySim(d);S.sentExtras=b.extra_materials_php;S.sentKey=JSON.stringify([b.extra_materials_php,ovr(),S.sel]);S.simCtx={lat:b.lat,lon:b.lon,tilt:b.tilt,az:b.azimuth};E=elec();
+ applySim(d);S.sentExtras=b.extra_materials_php;S.sentKey=JSON.stringify([b.extra_materials_php,ovr(),S.sel,b.load_profile]);S.simCtx={lat:b.lat,lon:b.lon,tilt:b.tilt,az:b.azimuth};E=elec();
  if(!retry&&E.panels!==S.panels){S.panels=E.panels;S.manual=true;await runSim(true);m.textContent="Panel count set to "+E.panels+" so every string is full. "+m.textContent;return}
- m.textContent="Simulation complete. Yield data: "+d.assumptions.yield_source+".";render()}
+ m.textContent="Simulation complete. Yield data: "+d.assumptions.yield_source+"."+(d.assumptions.load_profile?"":" The server did not report a load profile, so check that pv_api.py is the updated version.");render()}
 $("runBtn").onclick=()=>runSim();$("recalc").onclick=()=>runSim();$("ymon").onchange=()=>yld();
 function roi(){const d=S.sim;if(!d){$("roiOut").innerHTML=`<p style="color:var(--mu)">Run a simulation to see savings and payback.</p><button class="btn pri" data-go="tool">Open the solar tool</button>`;$("cf").innerHTML="";return}
  const s=d.summary,f=d.cash_flow,mx=Math.max(...f.map(x=>Math.abs(x.cumulative_php)),1),Y=v=>110-v/mx*90;
@@ -577,6 +593,17 @@ function mMtr(){const g=new THREE.Group(),dk=M(0x3a414d,{roughness:.5});
  const f=new THREE.Mesh(new THREE.CircleGeometry(.3,32),new THREE.MeshBasicMaterial({map:txtTex(200,200,[["kWh",28,"#444"],["01234.5",34,"#111"],["230 V",22,"#666"]],"#f4f6f8")}));f.position.set(0,.8,.212);g.add(f);
  bx(g,.7,.28,.14,dk,0,.32,.16);[-.2,0,.2].forEach(x=>cyl(g,.04,.03,M(0xc0c6d0,{metalness:.4}),x,.32,.24,1));
  return{g,h:1.25}}
+// utility grid: wooden pole, crossarm with insulators, pole-mounted transformer, service drop
+function mGrid(){const g=new THREE.Group(),wd=M(0x7a5a3a,{roughness:.95,metalness:0}),gy=M(0x8b95a5,{roughness:.5,metalness:.45}),ins=M(0xd9d2c0,{roughness:.35,metalness:.1}),dk=M(0x2b3039,{roughness:.5});
+ cyl(g,.13,7.2,wd,0,3.6,0);cyl(g,.17,.5,wd,0,.25,0);
+ bx(g,2.2,.1,.12,wd,0,6.9,0);bx(g,.1,.7,.1,wd,-.55,6.55,.1).rotation.z=.6;bx(g,.1,.7,.1,wd,.55,6.55,.1).rotation.z=-.6;
+ [-.9,0,.9].forEach(x=>{cyl(g,.05,.22,ins,x,7.06,0);cyl(g,.07,.06,ins,x,6.96,0)});
+ const tr=cyl(g,.3,.9,gy,.5,5.5,.42);cyl(g,.31,.06,dk,.5,5.98,.42);cyl(g,.31,.06,dk,.5,5.02,.42);cyl(g,.26,.05,gy,.5,6,.42);
+ [-.12,.12].forEach(dx=>cyl(g,.03,.2,ins,.5+dx,6.17,.42));
+ bx(g,.14,.5,.06,gy,.5,5.5,.12);
+ cyl(g,.015,1.6,dk,0,5.3,.15);
+ decal(g,.5,.2,txtTex(128,48,[["UTILITY",20,"#fff"],["230 V",16,"#8fe6bf"]],"#2b3039"),.5,4.75,.74);
+ return{g,h:6.6}}
 // distribution board: two rows of breaker modules
 function mMdb(){const g=new THREE.Group(),dk=M(0x2f3640,{roughness:.5});
  bx(g,1.15,1.3,.3,M(0xe3e7ee,{roughness:.55}),0,.75,0);bx(g,1.0,1.15,.04,M(0x20262f),0,.75,.17);
@@ -595,12 +622,12 @@ function mHome(){const g=new THREE.Group(),wl=M(0xeadfce,{roughness:.9,metalness
  cyl(g,.04,2.2,M(0x9aa3b2,{metalness:.4,roughness:.4}),.95,1.6,1.42);cyl(g,.07,.1,M(0x2b3039),.95,2.72,1.42);
  return{g,h:2.8}}
 function mWall(o){o=o||{l:4,h:2.6,t:.2};const g=new THREE.Group();bx(g,o.l,o.h,o.t,M(0xd9d4ca,{roughness:.95,metalness:0}),0,o.h/2,0);bx(g,o.l+.02,.12,o.t+.04,M(0x8f8a80,{roughness:.9,metalness:0}),0,.06,0);bx(g,o.l+.04,.06,o.t+.06,M(0xb9b4a8,{roughness:.9,metalness:0}),0,o.h+.03,0);return{g,h:o.h+.06}}
-const TY={pv:["PV array"],inv:["Inverter"],bat:["Battery"],pvb:["PV DC breaker"],acb:["AC breaker"],bmc:["Battery MCCB"],spdd:["DC surge protector"],spda:["AC surge protector"],iso:["DC isolator"],cmb:["PV combiner box"],mtr:["kWh meter"],mdb:["Distribution board"],home:["Home"],wall:["Wall"]};
-const BUILD={wall:mWall,pv:mPV,inv:mInv,bat:mBat,home:mHome,iso:mIso,cmb:mCmb,mtr:mMtr,mdb:mMdb,
+const TY={pv:["PV array"],inv:["Inverter"],bat:["Battery"],pvb:["PV DC breaker"],acb:["AC breaker"],bmc:["Battery MCCB"],spdd:["DC surge protector"],spda:["AC surge protector"],iso:["DC isolator"],cmb:["PV combiner box"],mtr:["kWh meter"],mdb:["Distribution board"],home:["Home"],grid:["Utility grid"],wall:["Wall"]};
+const BUILD={wall:mWall,pv:mPV,inv:mInv,bat:mBat,home:mHome,iso:mIso,cmb:mCmb,mtr:mMtr,mdb:mMdb,grid:mGrid,
  pvb:()=>mBrk({c:0xe5484d,p:2,s:1,t:"PV DC 2P"}),acb:()=>mBrk({c:0xf2a900,p:2,s:1,t:"AC 2P"}),bmc:()=>mBrk({c:0xb86bff,p:2,s:1.5,t:"BATT MCCB"}),
  spdd:()=>mSpd({c:0x4ea1ff,t:"DC SPD"}),spda:()=>mSpd({c:0x2fb8a6,t:"AC SPD"})};
 // ---- end part models ----
-const LIB={Breakers:[["pvb","PV DC breaker","prot_pv_dc_breaker"],["acb","AC breaker","prot_ac_breaker"],["bmc","Battery DC MCCB","prot_battery_mccb"],["spdd","DC surge protector","prot_spd_dc"],["spda","AC surge protector","prot_spd_ac"]],Switches:[["iso","DC isolator switch","dc_isolator"],["cmb","PV combiner box","combiner_box"]],Power:[["mtr","kWh meter","kwh_meter"],["mdb","Distribution board","dist_board"]],Solar:[["pv","PV array (own wires)",null,null]],Structure:[["wall","Wall 4 m",null,{l:4,h:2.6,t:.2}],["wall","Wall 2 m",null,{l:2,h:2.6,t:.2}],["wall","Wall 8 m",null,{l:8,h:2.6,t:.2}],["wall","Low wall 4 m",null,{l:4,h:1,t:.15}]]};
+const LIB={Breakers:[["pvb","PV DC breaker","prot_pv_dc_breaker"],["acb","AC breaker","prot_ac_breaker"],["bmc","Battery DC MCCB","prot_battery_mccb"],["spdd","DC surge protector","prot_spd_dc"],["spda","AC surge protector","prot_spd_ac"]],Switches:[["iso","DC isolator switch","dc_isolator"],["cmb","PV combiner box","combiner_box"]],Power:[["mtr","kWh meter","kwh_meter"],["mdb","Distribution board","dist_board"],["grid","Utility pole & transformer",null]],Solar:[["pv","PV array (own wires)",null,null]],Structure:[["wall","Wall 4 m",null,{l:4,h:2.6,t:.2}],["wall","Wall 2 m",null,{l:2,h:2.6,t:.2}],["wall","Wall 8 m",null,{l:8,h:2.6,t:.2}],["wall","Low wall 4 m",null,{l:4,h:1,t:.15}]]};
 function drawLib(){const U=PRICE(),t=ED.lt||"Breakers";
  $("lib").innerHTML=`<h2>Hardware library</h2><div class="tabs">${Object.keys(LIB).map(k=>`<button class="btn${k===t?" on":""}" data-lt="${k}">${k}</button>`).join("")}</div>`+LIB[t].map((x,i)=>`<button class="btn${ED.place===x[0]&&ED.wo===(x[3]||null)?" on":""}" data-add="${x[0]}" data-k="${i}">${x[1]}<small>${x[2]?php(U[x[2]]??UD[x[2]]):x[0]==="pv"?"by panel count":"scene only"}</small></button>`).join("")+`<p class="todo" style="margin-top:8px">Pick a part, then click the floor of the 3D view to place it. Walls are in the Structure tab: select one to set its size. Drop or drag hardware onto a wall face to mount it, then drag up or down to set its height. Add a second PV array from the Solar tab: it gets its own breaker and wires.</p>`}
 function lbl(txt,y){const c=document.createElement("canvas");c.width=256;c.height=64;const g=c.getContext("2d");g.fillStyle="#e8edf7";g.font="26px sans-serif";g.textAlign="center";g.fillText(txt,128,40);
@@ -633,8 +660,8 @@ function newArray(n){const A=arrays().filter(a=>a!==n),f=A[0],take=f?Math.max(1,
  const iv=ED.nodes.find(x=>x.type==="inv"),b=mkNode("pvb",Math.min(16,n.x+4),n.z,++ED.id);ED.wires.push({a:n.id,b:b.id,k:"p"},{a:n.id,b:b.id,k:"n"});if(iv)ED.wires.push({a:b.id,b:iv.id,k:"p"},{a:b.id,b:iv.id,k:"n"});rewire();const t=arrays().reduce((a,x)=>a+x.o.n,0);if(t!==S.panels)setPanels(t)}
 function pvInfo(n){const f=id=>+$(id).value,vo=f("voc"),vm=f("vmp"),is=f("iSc"),mx=f("maxDcV"),mn=f("mpptMin"),N=n.o.n,vc=vo*N*vocF(f("lowT")),vh=vm*N*.85,bad=vc>mx||vh<mn;
  $("pvInfo").innerHTML=`${(N*S.watts/1000).toFixed(2)} kWp, one string of ${N}: Voc cold ${vc.toFixed(0)} V (inverter max ${mx} V), Vmp ${(vm*N).toFixed(0)} V (hot ${vh.toFixed(0)} V, MPPT min ${mn} V), Isc ${is} A. <b class="${bad?"bad":"ok"}">${vc>mx?"Too many panels in series.":vh<mn?"Too few panels for the MPPT range.":"Within inverter limits."}</b>`}
-function seed(){clearScene();const N=(ty,x,z)=>mkNode(ty,x,z,++ED.id).id,pv=N("pv",-9,0),pb=N("pvb",-3.5,-3),iv=N("inv",0,-3),ab=N("acb",3.5,-3),hm=N("home",8,0),bt=S.bat>0?N("bat",0,3):0,pr=(a,b)=>ED.wires.push({a,b,k:"p"},{a,b,k:"n"});
- pr(pv,pb);pr(pb,iv);pr(iv,ab);pr(ab,hm);if(bt)pr(bt,iv);ED.wires.push({a:iv,b:hm,k:"g"});rewire();ED.hist=[];ED.key=edKey();upd()}
+function seed(){clearScene();const N=(ty,x,z)=>mkNode(ty,x,z,++ED.id).id,pv=N("pv",-9,0),pb=N("pvb",-3.5,-3),iv=N("inv",0,-3),ab=N("acb",3.5,-3),hm=N("home",8,0),gd=N("grid",14.5,0),bt=S.bat>0?N("bat",0,3):0,pr=(a,b)=>ED.wires.push({a,b,k:"p"},{a,b,k:"n"});
+ pr(pv,pb);pr(pb,iv);pr(iv,ab);pr(ab,hm);pr(hm,gd);if(bt)pr(bt,iv);ED.wires.push({a:iv,b:hm,k:"g"});rewire();ED.hist=[];ED.key=edKey();upd()}
 function conn(a,b){const seen=new Set([a]),q=[a];while(q.length){const c=q.pop();for(const w of ED.wires){const o=w.a===c?w.b:w.b===c?w.a:null;if(o&&!seen.has(o)){seen.add(o);q.push(o)}}}return seen.has(b)}
 function edWarn(){if(!ED.ready)return[];const f=ty=>ED.nodes.find(n=>n.type===ty),pv=f("pv"),iv=f("inv"),bt=f("bat"),hm=f("home"),o=[];
  arrays().forEach(p=>{const k=c=>ED.wires.some(w=>(w.a===p.id||w.b===p.id)&&w.k===c);if(iv&&!conn(p.id,iv.id))o.push(`${p.o.name} is not wired to the inverter.`);else if(!k("p")||!k("n"))o.push(`${p.o.name} needs its own + and − wires.`)});
@@ -735,7 +762,7 @@ function pickPO(){const m=byId(CAT.mod,S.sel.mod),iv=byId(CAT.inv,S.sel.inv),bt=
 function ovr(){return Object.assign({},pickPO(),S.UE||{})}
 function PRICE(){return Object.assign({},UD,ovr())}
 function sendPO(){return Object.fromEntries(Object.entries(ovr()).filter(e=>!NEWK.includes(e[0])))}
-const curKey=()=>JSON.stringify([Math.round(S.extras||0),ovr(),S.sel]);
+const curKey=()=>JSON.stringify([Math.round(S.extras||0),ovr(),S.sel,$("lprofSel").value]);
 function optsGrouped(arr,label){const by={};arr.forEach(x=>(by[x.brand]=by[x.brand]||[]).push(x));return Object.keys(by).map(b=>`<optgroup label="${b}">${by[b].map(x=>`<option value="${x.id}">${label(x)}</option>`).join("")}</optgroup>`).join("")}
 function buildPick(){
  $("modSel").innerHTML=optsGrouped(CAT.mod,x=>`${x.model}`);
@@ -850,7 +877,7 @@ async function init3d(){if(R3.ready){R3.rd.setSize($("r3c").clientWidth||640,$("
  rd.domElement.addEventListener("pointerdown",e=>{aim(e);const hit=ray.intersectObjects(R3.faceMeshes,false)[0];if(!hit)return;const fi=hit.object.userData.fi;if(fi!==RM.cur)useFace(fi);
   if(R3.mode==="tilt"){const f=cf();R3.drag={x0:e.clientX,y0:e.clientY,t0:f.tilt,a0:f.az};oc.enabled=false;rd.domElement.setPointerCapture(e.pointerId)}},true);
  rd.domElement.addEventListener("pointermove",e=>{const d=R3.drag;if(!d)return;const f=cf();f.tilt=Math.round(Math.max(0,Math.min(60,d.t0+(d.y0-e.clientY)*.25)));f.az=Math.round(((d.a0+(e.clientX-d.x0)*.5)%360+360)%360);
-  $("rTilt").value=f.tilt;$("rAz").value=f.az;rstats();rchips();r3faces();drawSun()});
+  $("rTilt").value=f.tilt;$("rAz").value=f.az;rtypeUI();rstats();rchips();r3faces();drawSun()});
  rd.domElement.addEventListener("pointerup",()=>{R3.drag=null;oc.enabled=true});
  new ResizeObserver(()=>{if(!el.clientWidth)return;cam.aspect=W()/H();cam.updateProjectionMatrix();rd.setSize(W(),H())}).observe(el);
  (function loop(){requestAnimationFrame(loop);if(!$("roof").classList.contains("on")||RM.view!=="3d")return;oc.update();rd.render(sc,cam)})();
