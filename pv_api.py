@@ -70,6 +70,20 @@ PROFILES = {
 }
 SUN = range(7, 18)
 
+# Roof profiles sent by the roof mapper. "loss" is a yield allowance applied to that face's PVGIS output.
+# flat: panels sit on tilted racks, so rows need spacing; 3% is a rough allowance for row-to-row shading.
+# Other profiles get no extra loss. These are planning assumptions, not measured values.
+ROOF_TYPES = {"custom": 0.0, "flat": 0.03, "shed": 0.0, "gable": 0.0, "hip": 0.0, "metal": 0.0, "tile": 0.0}
+RoofType = Literal["custom", "flat", "shed", "gable", "hip", "metal", "tile"]
+
+
+def _derate(y, loss):
+    """Return a copy of an hourly_yield() result with the output scaled by (1 - loss)."""
+    if not loss:
+        return y
+    k = 1 - loss
+    return [v * k for v in y[0]], y[1], y[2]
+
 
 class Appliance(BaseModel):
     name: str = Field("", max_length=60)
@@ -100,6 +114,7 @@ class Face(BaseModel):
     tilt: float = Field(15, ge=0, le=90)
     azimuth: float = Field(180, ge=0, le=360)
     max_panels: Optional[int] = Field(None, ge=1, le=2000, description="roof capacity from the mapper")
+    roof_type: RoofType = Field("custom", description="roof profile chosen in the roof mapper")
 
 
 class SimRequest(BaseModel):
@@ -121,6 +136,8 @@ class SimRequest(BaseModel):
     autonomy_days: float = Field(1, ge=0.5, le=5)
     battery_roundtrip_eff: float = Field(0.90, gt=0, le=1)
     battery_cutoff_pct: float = Field(20, ge=0, lt=80)
+    export_priority: Literal["battery_first", "export_first"] = Field(
+        "battery_first", description="surplus PV order when export is allowed: charge battery first, or export first")
     retail_rate: Optional[float] = Field(None, gt=0)
     export_rate: Optional[float] = Field(None, ge=0)
     cost_per_kw_php: float = Field(65_000, gt=0)
@@ -184,7 +201,7 @@ def hourly_yield(lat, lon, tilt, azimuth):
     return [s * k for _ in range(365) for s in shape], "FALLBACK synthetic 4.5 PSH day (PVGIS unavailable)", 0.3
 
 
-def dispatch(pv, kw, monthly_kwh, prof, bat_kwh, rt, usable, power_kw, grid, cut=0.0):
+def dispatch(pv, kw, monthly_kwh, prof, bat_kwh, rt, usable, power_kw, grid, cut=0.0, export_first=False):
     e, cap = sqrt(rt), bat_kwh * usable
     soc = cap * 0.5
     daily = monthly_kwh * 12 / 365
@@ -206,7 +223,7 @@ def dispatch(pv, kw, monthly_kwh, prof, bat_kwh, rt, usable, power_kw, grid, cut
                 dd["pv"][h] += (g + d)
                 dd["load"][h] += (l + d)
                 if cap > 0:
-                    if g > 0:
+                    if g > 0 and not export_first:   # export-first: surplus goes to the grid, battery only discharges
                         c = min(g, power_kw, (cap - soc) / e)
                         soc += c * e
                         g -= c
@@ -291,7 +308,12 @@ def simulate(req: SimRequest):
     day_frac = sum(prof[h] for h in SUN)
 
     if req.faces:
-        fy = [hourly_yield(req.lat, req.lon, f.tilt, f.azimuth) for f in req.faces]
+        fy = [_derate(hourly_yield(req.lat, req.lon, f.tilt, f.azimuth), ROOF_TYPES[f.roof_type]) for f in req.faces]
+        for f in req.faces:
+            if ROOF_TYPES[f.roof_type]:
+                notes.append(f"{f.name or f.roof_type}: {ROOF_TYPES[f.roof_type] * 100:.0f}% yield allowance for {f.roof_type}-roof row spacing and shading; leave extra room between rows.")
+            if f.azimuth < 90 or f.azimuth > 270:
+                notes.append(f"{f.name or f.roof_type} faces away from the sun (azimuth {f.azimuth:.0f}°), so its yield is much lower.")
         specs = [sum(y[0]) for y in fy]
         src = next((y[1] for y in fy if y[1].startswith("FALLBACK")), fy[0][1])
         pv, worst = fy[0][0], fy[0][2]          # placeholder until panels are allocated
@@ -350,7 +372,7 @@ def simulate(req: SimRequest):
         worst = sum(kws[j] * fy[j][2] for j in range(len(fy))) / kw
         spec_yield = sum(pv)
         face_rows = [{"name": f.name or f"Face {j+1}", "panels": counts[j], "kwp": round(kws[j], 2),
-                      "tilt": f.tilt, "azimuth": f.azimuth,
+                      "tilt": f.tilt, "azimuth": f.azimuth, "roof_type": f.roof_type,
                       "specific_yield_kwh_per_kwp": round(specs[j]),
                       "annual_kwh": round(kws[j] * specs[j])} for j, f in enumerate(req.faces)]
         notes.append(f"Yield modeled per roof face ({len(req.faces)} faces) and combined by kWp.")
@@ -364,8 +386,11 @@ def simulate(req: SimRequest):
         inv_kw = round(req.inverter_kw, 2)
         notes.append(f"Inverter size set by method/override: {inv_kw} kW")
 
+    export_first = grid == "export" and bat > 0 and req.export_priority == "export_first"
+    if export_first:
+        notes.append("Export-first dispatch: surplus PV is exported before charging the battery, so the battery stays at its starting charge and adds little.")
     mon, day = dispatch(pv, kw, monthly_kwh, prof, bat, req.battery_roundtrip_eff,
-                        usable, inv_kw, grid, req.battery_cutoff_pct)
+                        usable, inv_kw, grid, req.battery_cutoff_pct, export_first)
     stress_pct = stress_kwh = None
     if req.topology == "off-grid":
         un, tot, wm = stress_test(pv, kw, daily, prof, bat, req.battery_roundtrip_eff, usable, inv_kw, worst)
@@ -430,7 +455,8 @@ def simulate(req: SimRequest):
         },
         "monthly": rows, "typical_day": day, "cash_flow": flows,
         "assumptions": {"monthly_kwh": round(monthly_kwh, 1), "retail_rate": retail, "export_rate": exp_rate,
-                        "yield_source": src, "notes": notes, "unit_prices": U},
+                        "yield_source": src, "load_profile": "appliance list" if req.appliances else req.load_profile,
+                        "notes": notes, "unit_prices": U},
     }
 
 
